@@ -3,6 +3,33 @@ import bcrypt from 'bcryptjs';
 
 export class User {
   /**
+   * Busca todos os usuários
+   */
+  static async findAll() {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, email, role, is_active, last_login, created_at, updated_at')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Busca usuário por ID
+   */
+  static async findById(id: string) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, email, role, is_active, last_login, created_at, updated_at')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
    * Busca usuário por email
    */
   static async findByEmail(email: string) {
@@ -111,6 +138,90 @@ export class User {
     const { error } = await supabase
       .from('users')
       .update({ last_login: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+    return { success: true };
+  }
+
+  /**
+   * Cria novo usuário
+   */
+  static async create(userData: { name: string; email: string; password: string; role?: string; is_active?: boolean }) {
+    // Hash da senha antes de salvar
+    if (userData.password) {
+      const salt = await bcrypt.genSalt(10);
+      const password_hash = await bcrypt.hash(userData.password, salt);
+      
+      const { data, error } = await supabase
+        .from('users')
+        .insert([{
+          name: userData.name,
+          email: userData.email,
+          password_hash,
+          role: userData.role || 'user',
+          is_active: userData.is_active !== undefined ? userData.is_active : true,
+        }])
+        .select('id, name, email, role, is_active, created_at, updated_at')
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
+    throw new Error('Password is required');
+  }
+
+  /**
+   * Atualiza usuário
+   */
+  static async update(id: string, userData: Partial<{ name: string; email: string; password: string; role: string; is_active: boolean }>) {
+    // Se houver senha, fazer hash antes de atualizar
+    let password_hash: string | undefined;
+    if (userData.password) {
+      const salt = await bcrypt.genSalt(10);
+      password_hash = await bcrypt.hash(userData.password, salt);
+    }
+
+    const updateData: any = {};
+    if (userData.name) updateData.name = userData.name;
+    if (userData.email) updateData.email = userData.email;
+    if (password_hash) updateData.password_hash = password_hash;
+    if (userData.role) updateData.role = userData.role;
+    if (userData.is_active !== undefined) updateData.is_active = userData.is_active;
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', id)
+      .select('id, name, email, role, is_active, last_login, created_at, updated_at')
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Remove usuário (soft delete - desativa)
+   */
+  static async delete(id: string) {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ is_active: false })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Remove usuário permanentemente
+   */
+  static async deletePermanent(id: string) {
+    const { error } = await supabase
+      .from('users')
+      .delete()
       .eq('id', id);
 
     if (error) throw error;
