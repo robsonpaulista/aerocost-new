@@ -78,14 +78,30 @@ export class FixedCost {
    * Atualiza custos fixos
    */
   static async update(id: string, fixedCostData: any) {
+    console.log('[FixedCost.update] ID:', id);
+    console.log('[FixedCost.update] Dados recebidos:', fixedCostData);
+    console.log('[FixedCost.update] insurance recebido:', fixedCostData.insurance);
+    
+    // Garantir que aircraft_id não seja atualizado
+    const { aircraft_id, ...updateData } = fixedCostData;
+    
+    console.log('[FixedCost.update] Dados para update (sem aircraft_id):', updateData);
+    
     const { data, error } = await supabase
       .from('fixed_costs')
-      .update(fixedCostData)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[FixedCost.update] Erro:', error);
+      throw error;
+    }
+    
+    console.log('[FixedCost.update] Dados retornados do banco:', data);
+    console.log('[FixedCost.update] insurance retornado:', data?.insurance);
+    
     return data;
   }
 

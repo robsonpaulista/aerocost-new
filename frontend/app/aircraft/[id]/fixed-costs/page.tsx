@@ -138,22 +138,38 @@ export default function FixedCostsPage() {
         }
       }
       
+      // Log dos dados salvos para debug
+      console.log('[FixedCostsPage] Dados salvos retornados do servidor:', savedData);
+      console.log('[FixedCostsPage] insurance salvo:', savedData?.insurance);
+      
       // Atualizar o formData com os dados salvos (garantir sincronização)
       if (savedData) {
-        setFormData({
+        // Converter valores para números (Supabase pode retornar como string)
+        const parseNumeric = (value: any): number => {
+          if (value === null || value === undefined) return 0;
+          const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
+          return isNaN(parsed) ? 0 : parsed;
+        };
+        
+        const updatedFormData = {
           ...savedData,
-          crew_monthly: savedData.crew_monthly || 0,
-          pilot_hourly_rate: savedData.pilot_hourly_rate || 0,
-          hangar_monthly: savedData.hangar_monthly || 0,
-          ec_fixed_usd: savedData.ec_fixed_usd || 0,
-          insurance: savedData.insurance || 0,
-          administration: savedData.administration || 0,
-        });
+          crew_monthly: parseNumeric(savedData.crew_monthly),
+          pilot_hourly_rate: parseNumeric(savedData.pilot_hourly_rate),
+          hangar_monthly: parseNumeric(savedData.hangar_monthly),
+          ec_fixed_usd: parseNumeric(savedData.ec_fixed_usd),
+          insurance: parseNumeric(savedData.insurance),
+          administration: parseNumeric(savedData.administration),
+        };
+        
+        console.log('[FixedCostsPage] Atualizando formData com dados salvos:', updatedFormData);
+        console.log('[FixedCostsPage] insurance no formData atualizado:', updatedFormData.insurance);
+        
+        setFormData(updatedFormData);
       }
       
       alert('Custos fixos salvos com sucesso!');
-      // Recarregar dados do servidor para garantir sincronização
-      await loadData();
+      // NÃO recarregar dados do servidor aqui - usar apenas os dados retornados do save
+      // await loadData(); // REMOVIDO - estava causando sobrescrita com valores antigos
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
       console.error('Erro ao salvar custos fixos:', error);
