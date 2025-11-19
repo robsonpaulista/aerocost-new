@@ -181,7 +181,7 @@ export const aircraftApi = {
 
 export const fixedCostApi = {
   get: (aircraftId: string) =>
-    api.get<FixedCost>(`/fixed-costs/${aircraftId}`).then(res => res.data),
+    api.get<FixedCost>(`/fixed-costs/aircraft/${aircraftId}`).then(res => res.data),
   upsert: (data: FixedCost) =>
     api.post<FixedCost>('/fixed-costs', data).then(res => res.data),
   update: (id: string, data: Partial<FixedCost>) =>
@@ -191,7 +191,7 @@ export const fixedCostApi = {
 
 export const variableCostApi = {
   get: (aircraftId: string) =>
-    api.get<VariableCost>(`/variable-costs/${aircraftId}`).then(res => res.data),
+    api.get<VariableCost>(`/variable-costs/aircraft/${aircraftId}`).then(res => res.data),
   upsert: (data: VariableCost) =>
     api.post<VariableCost>('/variable-costs', data).then(res => res.data),
   update: (id: string, data: Partial<VariableCost>) =>
