@@ -235,7 +235,7 @@ export const calculationApi = {
 
 export const flightApi = {
   list: (aircraftId: string, filters?: { flight_type?: string; start_date?: string; end_date?: string; limit?: number }) =>
-    api.get(`/flights/${aircraftId}`, { params: filters }).then(res => res.data),
+    api.get(`/flights/aircraft/${aircraftId}`, { params: filters }).then(res => res.data),
   get: (id: string) =>
     api.get(`/flights/single/${id}`).then(res => res.data),
   create: (data: Flight) =>
@@ -247,9 +247,9 @@ export const flightApi = {
   markAsCompleted: (id: string, actualLegTime?: number) =>
     api.post(`/flights/${id}/complete`, { actual_leg_time: actualLegTime }).then(res => res.data),
   getStatistics: (aircraftId: string, startDate?: string, endDate?: string) =>
-    api.get(`/flights/${aircraftId}/statistics`, { params: { start_date: startDate, end_date: endDate } }).then(res => res.data),
+    api.get(`/flights/aircraft/${aircraftId}/statistics`, { params: { start_date: startDate, end_date: endDate } }).then(res => res.data),
   recalculateCosts: (aircraftId: string) =>
-    api.post(`/flights/${aircraftId}/recalculate-costs`).then(res => res.data),
+    api.post(`/flights/aircraft/${aircraftId}/recalculate-costs`).then(res => res.data),
 };
 
 export const dashboardApi = {
