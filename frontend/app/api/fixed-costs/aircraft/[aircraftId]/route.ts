@@ -10,6 +10,12 @@ export async function GET(
     const resolvedParams = params instanceof Promise ? await params : params;
     const { aircraftId } = resolvedParams;
     const fixedCost = await FixedCost.findByAircraftId(aircraftId);
+    
+    console.log('[FixedCosts API] Dados retornados do banco:', fixedCost);
+    if (fixedCost) {
+      console.log('[FixedCosts API] insurance value:', fixedCost.insurance, 'type:', typeof fixedCost.insurance);
+    }
+    
     return NextResponse.json(fixedCost);
   } catch (error: any) {
     console.error('[Fixed Costs API Error]', error);

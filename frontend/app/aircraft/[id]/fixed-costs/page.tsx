@@ -53,18 +53,34 @@ export default function FixedCostsPage() {
 
       setAircraft(aircraftData);
       if (fixedCostData) {
+        console.log('[FixedCostsPage] Dados recebidos do servidor:', fixedCostData);
+        console.log('[FixedCostsPage] insurance raw:', fixedCostData.insurance, 'type:', typeof fixedCostData.insurance);
+        
         // Salvar o ID do registro existente
         setExistingFixedCostId(fixedCostData.id || null);
+        
+        // Converter valores para números (Supabase pode retornar como string para numeric)
+        const parseNumeric = (value: any): number => {
+          if (value === null || value === undefined) return 0;
+          const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
+          return isNaN(parsed) ? 0 : parsed;
+        };
+        
         // Garantir que todos os valores são números válidos
-        setFormData({
+        const formDataToSet = {
           ...fixedCostData,
-          crew_monthly: fixedCostData.crew_monthly || 0,
-          pilot_hourly_rate: fixedCostData.pilot_hourly_rate || 0,
-          hangar_monthly: fixedCostData.hangar_monthly || 0,
-          ec_fixed_usd: fixedCostData.ec_fixed_usd || 0,
-          insurance: fixedCostData.insurance || 0,
-          administration: fixedCostData.administration || 0,
-        });
+          crew_monthly: parseNumeric(fixedCostData.crew_monthly),
+          pilot_hourly_rate: parseNumeric(fixedCostData.pilot_hourly_rate),
+          hangar_monthly: parseNumeric(fixedCostData.hangar_monthly),
+          ec_fixed_usd: parseNumeric(fixedCostData.ec_fixed_usd),
+          insurance: parseNumeric(fixedCostData.insurance),
+          administration: parseNumeric(fixedCostData.administration),
+        };
+        
+        console.log('[FixedCostsPage] Dados processados para formData:', formDataToSet);
+        console.log('[FixedCostsPage] insurance processado:', formDataToSet.insurance);
+        
+        setFormData(formDataToSet);
       } else {
         // Resetar para valores padrão se não houver dados
         setExistingFixedCostId(null);
