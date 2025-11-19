@@ -46,17 +46,29 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
   },
 });
 
-// Interceptor para logar todas as requisições
+// Interceptor para adicionar timestamp a todas as requisições GET para evitar cache
 api.interceptors.request.use(
   (config) => {
+    // Adicionar timestamp para evitar cache em requisições GET
+    if (config.method === 'get' || config.method === 'GET') {
+      config.params = {
+        ...config.params,
+        _t: Date.now(), // Timestamp para evitar cache
+      };
+    }
+    
     console.log('[API REQUEST]', {
       method: config.method?.toUpperCase(),
       url: config.url,
       baseURL: config.baseURL,
       fullURL: `${config.baseURL}${config.url}`,
+      params: config.params,
       data: config.data
     });
     return config;
