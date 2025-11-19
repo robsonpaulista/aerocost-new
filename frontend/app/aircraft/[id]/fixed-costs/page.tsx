@@ -107,13 +107,33 @@ export default function FixedCostsPage() {
       };
       
       // Se já existe registro, usar update; senão, usar upsert (create)
+      let savedData;
       if (existingFixedCostId) {
-        await fixedCostApi.update(existingFixedCostId, dataToSend);
+        savedData = await fixedCostApi.update(existingFixedCostId, dataToSend);
       } else {
-        await fixedCostApi.upsert(dataToSend);
+        savedData = await fixedCostApi.upsert(dataToSend);
+        // Se era novo registro, atualizar o ID
+        if (savedData?.id) {
+          setExistingFixedCostId(savedData.id);
+        }
+      }
+      
+      // Atualizar o formData com os dados salvos (garantir sincronização)
+      if (savedData) {
+        setFormData({
+          ...savedData,
+          crew_monthly: savedData.crew_monthly || 0,
+          pilot_hourly_rate: savedData.pilot_hourly_rate || 0,
+          hangar_monthly: savedData.hangar_monthly || 0,
+          ec_fixed_usd: savedData.ec_fixed_usd || 0,
+          insurance: savedData.insurance || 0,
+          administration: savedData.administration || 0,
+        });
       }
       
       alert('Custos fixos salvos com sucesso!');
+      // Recarregar dados do servidor para garantir sincronização
+      await loadData();
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
       console.error('Erro ao salvar custos fixos:', error);
