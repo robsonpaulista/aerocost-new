@@ -31,12 +31,14 @@ export default function FixedCostsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    // Forçar recarregamento sem cache
     loadData();
   }, [aircraftId]);
 
   // Recarregar dados quando a página recebe foco (útil após salvar e voltar)
   useEffect(() => {
     const handleFocus = () => {
+      // Adicionar timestamp para evitar cache
       loadData();
     };
     window.addEventListener('focus', handleFocus);
@@ -46,9 +48,13 @@ export default function FixedCostsPage() {
   const loadData = async () => {
     try {
       setLoadingData(true);
+      console.log('[FixedCostsPage] loadData chamado - timestamp:', new Date().toISOString());
+      
+      // Adicionar timestamp para evitar cache do navegador
+      const timestamp = Date.now();
       const [aircraftData, fixedCostData] = await Promise.all([
         aircraftApi.get(aircraftId),
-        fixedCostApi.get(aircraftId).catch(() => null),
+        fixedCostApi.get(aircraftId, { params: { _t: timestamp } }).catch(() => null),
       ]);
 
       setAircraft(aircraftData);
