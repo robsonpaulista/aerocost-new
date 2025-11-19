@@ -1,0 +1,80 @@
+# 🔧 Solução: Erro 405 - Vercel não roteia para Express
+
+## ❌ Problema
+
+- Erro 405 (Method Not Allowed) no login
+- Vercel não tem logs da autenticação
+- Requisições `/api/*` não chegam ao Express
+
+## ✅ Solução Aplicada
+
+1. **Movido `vercel.json` para a raiz do projeto**
+   - O Vercel precisa do `vercel.json` na raiz quando há múltiplos builds
+   - Caminhos relativos agora são corretos
+
+2. **Configuração do `vercel.json` na raiz:**
+   ```json
+   {
+     "version": 2,
+     "builds": [
+       {
+         "src": "frontend/package.json",
+         "use": "@vercel/next"
+       },
+       {
+         "src": "api/index.js",
+         "use": "@vercel/node"
+       }
+     ],
+     "routes": [
+       {
+         "src": "/api/(.*)",
+         "dest": "api/index.js"
+       },
+       {
+         "src": "/(.*)",
+         "dest": "frontend/$1"
+       }
+     ]
+   }
+   ```
+
+## 📋 Configuração no Vercel Dashboard
+
+**IMPORTANTE**: Com o `vercel.json` na raiz, você precisa ajustar:
+
+1. Acesse: https://vercel.com/dashboard
+2. Vá no projeto
+3. **Settings** → **General**
+4. **Root Directory**: Deixe **VAZIO** (não configure como `frontend`)
+   - O `vercel.json` na raiz já define os caminhos corretos
+5. **Framework Preset**: Deixe como `Other` ou `Next.js` (auto-detecta)
+
+## 🚀 Próximos Passos
+
+1. Faça commit e push:
+   ```bash
+   git add vercel.json
+   git rm frontend/vercel.json
+   git commit -m "fix: mover vercel.json para raiz para corrigir roteamento do Express"
+   git push origin main
+   ```
+
+2. No Vercel Dashboard:
+   - **Remova o Root Directory** (deixe vazio)
+   - Faça **Redeploy**
+
+3. Teste novamente o login
+
+## ✅ Como Funciona Agora
+
+- **Raiz do projeto**: `vercel.json` define todos os builds e rotas
+- **Frontend**: Build do Next.js em `frontend/`
+- **Backend**: Build do Express em `api/index.js`
+- **Rotas `/api/*`**: Vão direto para `api/index.js`
+- **Outras rotas**: Vão para o Next.js
+
+---
+
+**O erro 405 deve ser resolvido agora! ✅**
+
