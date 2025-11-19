@@ -18,6 +18,7 @@ export default function FixedCostsPage() {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [aircraft, setAircraft] = useState<Aircraft | null>(null);
+  const [existingFixedCostId, setExistingFixedCostId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FixedCost>({
     aircraft_id: aircraftId,
     crew_monthly: 0,
@@ -32,8 +33,6 @@ export default function FixedCostsPage() {
   useEffect(() => {
     loadData();
   }, [aircraftId]);
-
-  const [existingFixedCostId, setExistingFixedCostId] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
