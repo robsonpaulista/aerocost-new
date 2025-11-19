@@ -19,33 +19,57 @@ export class FixedCost {
    * Cria ou atualiza custos fixos
    */
   static async upsert(fixedCostData: any) {
+    console.log('[FixedCost.upsert] Dados recebidos:', fixedCostData);
+    
     // Se já existe um registro para esta aeronave, buscar o ID primeiro
-    if (fixedCostData.aircraft_id && !fixedCostData.id) {
+    let existingId: string | null = null;
+    if (fixedCostData.aircraft_id) {
       const existing = await this.findByAircraftId(fixedCostData.aircraft_id);
       if (existing) {
-        fixedCostData.id = existing.id;
+        existingId = existing.id;
+        console.log('[FixedCost.upsert] Registro existente encontrado:', existing);
+      } else {
+        console.log('[FixedCost.upsert] Nenhum registro existente encontrado');
       }
     }
 
     // Se tem ID, fazer update; senão, fazer insert
-    if (fixedCostData.id) {
+    if (existingId || fixedCostData.id) {
+      const idToUpdate = existingId || fixedCostData.id;
+      // Remover id e aircraft_id do objeto de update (não devem ser atualizados)
+      const { id, aircraft_id, ...updateData } = fixedCostData;
+      
+      console.log('[FixedCost.upsert] Fazendo UPDATE com ID:', idToUpdate);
+      console.log('[FixedCost.upsert] Dados para update:', updateData);
+      
       const { data, error } = await supabase
         .from('fixed_costs')
-        .update(fixedCostData)
-        .eq('id', fixedCostData.id)
+        .update(updateData)
+        .eq('id', idToUpdate)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[FixedCost.upsert] Erro no update:', error);
+        throw error;
+      }
+      
+      console.log('[FixedCost.upsert] Update realizado com sucesso:', data);
       return data;
     } else {
+      console.log('[FixedCost.upsert] Fazendo INSERT');
       const { data, error } = await supabase
         .from('fixed_costs')
         .insert([fixedCostData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[FixedCost.upsert] Erro no insert:', error);
+        throw error;
+      }
+      
+      console.log('[FixedCost.upsert] Insert realizado com sucesso:', data);
       return data;
     }
   }

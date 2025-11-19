@@ -19,33 +19,57 @@ export class VariableCost {
    * Cria ou atualiza custos variáveis
    */
   static async upsert(variableCostData: any) {
+    console.log('[VariableCost.upsert] Dados recebidos:', variableCostData);
+    
     // Se já existe um registro para esta aeronave, buscar o ID primeiro
-    if (variableCostData.aircraft_id && !variableCostData.id) {
+    let existingId: string | null = null;
+    if (variableCostData.aircraft_id) {
       const existing = await this.findByAircraftId(variableCostData.aircraft_id);
       if (existing) {
-        variableCostData.id = existing.id;
+        existingId = existing.id;
+        console.log('[VariableCost.upsert] Registro existente encontrado:', existing);
+      } else {
+        console.log('[VariableCost.upsert] Nenhum registro existente encontrado');
       }
     }
 
     // Se tem ID, fazer update; senão, fazer insert
-    if (variableCostData.id) {
+    if (existingId || variableCostData.id) {
+      const idToUpdate = existingId || variableCostData.id;
+      // Remover id e aircraft_id do objeto de update (não devem ser atualizados)
+      const { id, aircraft_id, ...updateData } = variableCostData;
+      
+      console.log('[VariableCost.upsert] Fazendo UPDATE com ID:', idToUpdate);
+      console.log('[VariableCost.upsert] Dados para update:', updateData);
+      
       const { data, error } = await supabase
         .from('variable_costs')
-        .update(variableCostData)
-        .eq('id', variableCostData.id)
+        .update(updateData)
+        .eq('id', idToUpdate)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[VariableCost.upsert] Erro no update:', error);
+        throw error;
+      }
+      
+      console.log('[VariableCost.upsert] Update realizado com sucesso:', data);
       return data;
     } else {
+      console.log('[VariableCost.upsert] Fazendo INSERT');
       const { data, error } = await supabase
         .from('variable_costs')
         .insert([variableCostData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[VariableCost.upsert] Erro no insert:', error);
+        throw error;
+      }
+      
+      console.log('[VariableCost.upsert] Insert realizado com sucesso:', data);
       return data;
     }
   }
