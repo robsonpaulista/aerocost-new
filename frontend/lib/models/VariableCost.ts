@@ -19,14 +19,35 @@ export class VariableCost {
    * Cria ou atualiza custos variáveis
    */
   static async upsert(variableCostData: any) {
-    const { data, error } = await supabase
-      .from('variable_costs')
-      .upsert(variableCostData, { onConflict: 'aircraft_id' })
-      .select()
-      .single();
+    // Se já existe um registro para esta aeronave, buscar o ID primeiro
+    if (variableCostData.aircraft_id && !variableCostData.id) {
+      const existing = await this.findByAircraftId(variableCostData.aircraft_id);
+      if (existing) {
+        variableCostData.id = existing.id;
+      }
+    }
 
-    if (error) throw error;
-    return data;
+    // Se tem ID, fazer update; senão, fazer insert
+    if (variableCostData.id) {
+      const { data, error } = await supabase
+        .from('variable_costs')
+        .update(variableCostData)
+        .eq('id', variableCostData.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } else {
+      const { data, error } = await supabase
+        .from('variable_costs')
+        .insert([variableCostData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
   }
 
   /**
