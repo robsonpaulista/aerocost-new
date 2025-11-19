@@ -50,11 +50,9 @@ export default function FixedCostsPage() {
       setLoadingData(true);
       console.log('[FixedCostsPage] loadData chamado - timestamp:', new Date().toISOString());
       
-      // Adicionar timestamp para evitar cache do navegador
-      const timestamp = Date.now();
       const [aircraftData, fixedCostData] = await Promise.all([
         aircraftApi.get(aircraftId),
-        fixedCostApi.get(aircraftId, { params: { _t: timestamp } }).catch(() => null),
+        fixedCostApi.get(aircraftId).catch(() => null),
       ]);
 
       setAircraft(aircraftData);
