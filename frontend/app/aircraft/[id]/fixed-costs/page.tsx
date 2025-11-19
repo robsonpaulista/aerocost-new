@@ -278,10 +278,12 @@ export default function FixedCostsPage() {
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                value={formData.insurance || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, insurance: parseFloat(e.target.value) || 0 })
-                }
+                value={typeof formData.insurance === 'number' ? formData.insurance : (parseFloat(String(formData.insurance || '0')) || 0)}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  console.log('[FixedCostsPage] insurance onChange:', value);
+                  setFormData({ ...formData, insurance: value });
+                }}
                 error={errors.insurance}
               />
 
