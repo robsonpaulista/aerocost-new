@@ -18,6 +18,7 @@ export default function VariableCostsPage() {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [aircraft, setAircraft] = useState<Aircraft | null>(null);
+  const [existingVariableCostId, setExistingVariableCostId] = useState<string | null>(null);
   const [formData, setFormData] = useState<VariableCost>({
     aircraft_id: aircraftId,
     fuel_liters_per_hour: 0,
@@ -43,7 +44,11 @@ export default function VariableCostsPage() {
 
       setAircraft(aircraftData);
       if (variableCostData) {
+        // Salvar o ID do registro existente
+        setExistingVariableCostId(variableCostData.id || null);
         setFormData(variableCostData);
+      } else {
+        setExistingVariableCostId(null);
       }
     } catch (error: any) {
       console.error('Erro ao carregar dados:', error);

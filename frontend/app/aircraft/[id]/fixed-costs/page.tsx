@@ -33,6 +33,8 @@ export default function FixedCostsPage() {
     loadData();
   }, [aircraftId]);
 
+  const [existingFixedCostId, setExistingFixedCostId] = useState<string | null>(null);
+
   const loadData = async () => {
     try {
       setLoadingData(true);
@@ -43,6 +45,8 @@ export default function FixedCostsPage() {
 
       setAircraft(aircraftData);
       if (fixedCostData) {
+        // Salvar o ID do registro existente
+        setExistingFixedCostId(fixedCostData.id || null);
         // Garantir que todos os valores são números válidos
         setFormData({
           ...fixedCostData,
@@ -55,6 +59,7 @@ export default function FixedCostsPage() {
         });
       } else {
         // Resetar para valores padrão se não houver dados
+        setExistingFixedCostId(null);
         setFormData({
           aircraft_id: aircraftId,
           crew_monthly: 0,
@@ -83,8 +88,7 @@ export default function FixedCostsPage() {
 
     try {
       // Garantir que aircraft_id está correto e valores são números válidos
-      const dataToSend: FixedCost = {
-        ...formData,
+      const dataToSend = {
         aircraft_id: aircraftId,
         crew_monthly: formData.crew_monthly || 0,
         pilot_hourly_rate: formData.pilot_hourly_rate || 0,
@@ -94,7 +98,14 @@ export default function FixedCostsPage() {
         administration: formData.administration || 0,
       };
       
-      await fixedCostApi.upsert(dataToSend);
+      // Se já existe registro, usar update; senão, usar upsert (create)
+      if (existingFixedCostId) {
+        await fixedCostApi.update(existingFixedCostId, dataToSend);
+      } else {
+        await fixedCostApi.upsert(dataToSend);
+      }
+      
+      alert('Custos fixos salvos com sucesso!');
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
       console.error('Erro ao salvar custos fixos:', error);
