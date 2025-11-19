@@ -66,9 +66,27 @@ export default function VariableCostsPage() {
     setErrors({});
 
     try {
-      await variableCostApi.upsert(formData);
+      const dataToSend = {
+        aircraft_id: aircraftId,
+        fuel_liters_per_hour: formData.fuel_liters_per_hour || 0,
+        fuel_consumption_km_per_l: formData.fuel_consumption_km_per_l || 0,
+        fuel_price_per_liter: formData.fuel_price_per_liter || 0,
+        ec_variable_usd: formData.ec_variable_usd || 0,
+        ru_per_leg: formData.ru_per_leg || 0,
+        ccr_per_leg: formData.ccr_per_leg || 0,
+      };
+      
+      // Se já existe registro, usar update; senão, usar upsert (create)
+      if (existingVariableCostId) {
+        await variableCostApi.update(existingVariableCostId, dataToSend);
+      } else {
+        await variableCostApi.upsert(dataToSend);
+      }
+      
+      alert('Custos variáveis salvos com sucesso!');
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
+      console.error('Erro ao salvar custos variáveis:', error);
       if (error.response?.data?.details) {
         const validationErrors: Record<string, string> = {};
         error.response.data.details.forEach((err: any) => {
