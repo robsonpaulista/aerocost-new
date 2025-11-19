@@ -201,7 +201,7 @@ export const variableCostApi = {
 
 export const routeApi = {
   list: (aircraftId: string) =>
-    api.get<Route[]>(`/routes/${aircraftId}`).then(res => res.data),
+    api.get<Route[]>(`/routes/aircraft/${aircraftId}`).then(res => res.data),
   get: (id: string) => api.get<Route>(`/routes/single/${id}`).then(res => res.data),
   create: (data: Omit<Route, 'id'>) =>
     api.post<Route>('/routes', data).then(res => res.data),

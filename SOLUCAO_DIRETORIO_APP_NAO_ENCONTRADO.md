@@ -1,84 +1,65 @@
-# 🔧 Solução: Diretório `app` não encontrado no Vercel
+# ✅ Solução: Diretório App Não Encontrado no Vercel
 
-## ❌ Erro
+## 🔍 Problema
 
+O Vercel está mostrando:
 ```
 Error: > Couldn't find any `pages` or `app` directory. Please create one under the project root
 ```
 
-## 🔍 Causa
+## ✅ Causas Possíveis
 
-O Vercel está procurando o diretório `app` dentro do `frontend`, mas pode estar havendo um problema com:
-1. A estrutura de diretórios no Git
-2. O Root Directory configurado no Vercel
-3. Arquivos não commitados
+1. **Diretório `app` não foi commitado no Git**
+2. **Script `vercel-build` no package.json** (não é necessário)
+3. **Root Directory configurado incorretamente**
 
-## ✅ Verificação
+## ✅ Solução
 
-Os arquivos estão no Git:
-- ✅ `frontend/app/page.tsx` - Existe
-- ✅ `frontend/app/layout.tsx` - Existe
-- ✅ `frontend/package.json` - Existe
-- ✅ `frontend/next.config.js` - Existe
+### Execute o Script:
 
-## 🔧 Solução
+```powershell
+powershell -ExecutionPolicy Bypass -File corrigir-diretorio-app.ps1
+git push origin main
+```
 
-### Opção 1: Verificar Root Directory no Vercel
+### Ou Faça Manualmente:
 
-1. Acesse: https://vercel.com/dashboard
-2. Vá no projeto **frontend**
-3. **Settings** → **General**
-4. Verifique se **Root Directory** está configurado como: `frontend`
-5. Se não estiver, configure e faça **Redeploy**
+```powershell
+# 1. Verificar se frontend/app existe
+Test-Path frontend/app
 
-### Opção 2: Limpar Cache e Redeploy
+# 2. Verificar se está no Git
+git ls-files | Select-String "^frontend/app/"
+# Se não retornar nada, o diretório não está no Git!
 
-1. No Vercel Dashboard, vá em **Deployments**
-2. Clique nos três pontos do último deployment
-3. Selecione **Redeploy**
-4. Marque a opção **"Use existing Build Cache"** como **desmarcada**
-5. Clique em **Redeploy**
+# 3. Adicionar ao Git
+git add frontend/app/
 
-### Opção 3: Verificar Estrutura no GitHub
+# 4. Remover vercel-build do package.json (se existir)
+# Edite frontend/package.json e remova o script "vercel-build"
 
-1. Acesse: https://github.com/robsonpaulista/aerocost
-2. Navegue até: `frontend/app/`
-3. Verifique se os arquivos aparecem corretamente
-4. Se não aparecerem, pode ser necessário fazer push novamente
+# 5. Commit
+git commit -m "fix: adicionar diretório app ao Git"
 
-### Opção 4: Recriar Projeto no Vercel
+# 6. Push
+git push origin main
+```
 
-Se nada funcionar:
+## 🔧 Verificação no Vercel
 
-1. **Delete o projeto** no Vercel (Settings → Delete Project)
-2. **Crie um novo projeto**
-3. Importe o mesmo repositório: `robsonpaulista/aerocost`
-4. **Configure:**
-   - Root Directory: `frontend`
-   - Framework: Next.js
-5. **Variáveis de Ambiente:**
-   ```
-   NEXT_PUBLIC_API_URL=https://aerocost-api.vercel.app/api
-   ```
-6. **Deploy**
+Depois do push, verifique:
 
-## 📋 Checklist
-
-- [ ] Root Directory = `frontend` no Vercel
-- [ ] Arquivos `frontend/app/` existem no GitHub
-- [ ] `frontend/package.json` existe no GitHub
-- [ ] `frontend/next.config.js` existe no GitHub
-- [ ] Cache limpo no redeploy
-- [ ] Variáveis de ambiente configuradas
+1. **Root Directory**: Deve ser `frontend`
+2. **Framework Preset**: Deve ser `Next.js`
+3. **Build Command**: Deve estar vazio (auto-detecta)
+4. **Output Directory**: Deve estar vazio (auto-detecta)
 
 ## ⚠️ Importante
 
-O erro pode ocorrer se:
-- O Root Directory estiver vazio ou incorreto
-- Os arquivos não estiverem commitados no Git
-- O cache do Vercel estiver desatualizado
+- **NÃO** adicione script `vercel-build` no package.json
+- O Next.js detecta automaticamente o diretório `app`
+- O Root Directory deve ser `frontend`, não a raiz do projeto
 
 ---
 
-**Tente primeiro a Opção 1 e 2. Se não funcionar, use a Opção 4.**
-
+**Execute o script e faça push! ✅**
