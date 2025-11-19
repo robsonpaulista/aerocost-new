@@ -34,6 +34,15 @@ export default function VariableCostsPage() {
     loadData();
   }, [aircraftId]);
 
+  // Recarregar dados quando a página recebe foco (útil após salvar e voltar)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadData();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [aircraftId]);
+
   const loadData = async () => {
     try {
       setLoadingData(true);
@@ -77,13 +86,25 @@ export default function VariableCostsPage() {
       };
       
       // Se já existe registro, usar update; senão, usar upsert (create)
+      let savedData;
       if (existingVariableCostId) {
-        await variableCostApi.update(existingVariableCostId, dataToSend);
+        savedData = await variableCostApi.update(existingVariableCostId, dataToSend);
       } else {
-        await variableCostApi.upsert(dataToSend);
+        savedData = await variableCostApi.upsert(dataToSend);
+        // Se era novo registro, atualizar o ID
+        if (savedData?.id) {
+          setExistingVariableCostId(savedData.id);
+        }
+      }
+      
+      // Atualizar o formData com os dados salvos (garantir sincronização)
+      if (savedData) {
+        setFormData(savedData);
       }
       
       alert('Custos variáveis salvos com sucesso!');
+      // Recarregar dados do servidor para garantir sincronização
+      await loadData();
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
       console.error('Erro ao salvar custos variáveis:', error);

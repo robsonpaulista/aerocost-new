@@ -34,6 +34,15 @@ export default function FixedCostsPage() {
     loadData();
   }, [aircraftId]);
 
+  // Recarregar dados quando a página recebe foco (útil após salvar e voltar)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadData();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [aircraftId]);
+
   const loadData = async () => {
     try {
       setLoadingData(true);
