@@ -1,9 +1,19 @@
 // API Route do Next.js para Users
 import { NextRequest, NextResponse } from 'next/server';
 import { User } from '@/lib/models/User';
+import { requireAdmin } from '@/lib/auth/validateRole';
 
 export async function GET(request: NextRequest) {
   try {
+    // Validar se é admin para listar todos os usuários
+    const { user, error } = await requireAdmin(request);
+    if (error || !user) {
+      return NextResponse.json(
+        { error: error || 'Acesso negado' },
+        { status: 403 }
+      );
+    }
+
     const users = await User.findAll();
     return NextResponse.json(users);
   } catch (error: any) {
@@ -17,6 +27,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Validar se é admin
+    const { user: adminUser, error } = await requireAdmin(request);
+    if (error || !adminUser) {
+      return NextResponse.json(
+        { error: error || 'Acesso negado' },
+        { status: 403 }
+      );
+    }
+
     const { name, email, password, role, is_active } = await request.json();
 
     // Validações básicas
@@ -36,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await User.create({
+    const newUser = await User.create({
       name,
       email,
       password,
@@ -44,7 +63,7 @@ export async function POST(request: NextRequest) {
       is_active: is_active !== undefined ? is_active : true,
     });
 
-    return NextResponse.json(user, { status: 201 });
+    return NextResponse.json(newUser, { status: 201 });
   } catch (error: any) {
     console.error('[Users API Error]', error);
     return NextResponse.json(

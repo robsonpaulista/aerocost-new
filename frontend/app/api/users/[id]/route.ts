@@ -1,12 +1,22 @@
 // API Route do Next.js para User por ID
 import { NextRequest, NextResponse } from 'next/server';
 import { User } from '@/lib/models/User';
+import { requireAdmin } from '@/lib/auth/validateRole';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    // Validar se é admin
+    const { user: adminUser, error } = await requireAdmin(request);
+    if (error || !adminUser) {
+      return NextResponse.json(
+        { error: error || 'Acesso negado' },
+        { status: 403 }
+      );
+    }
+
     const resolvedParams = params instanceof Promise ? await params : params;
     const { id } = resolvedParams;
     const user = await User.findById(id);
@@ -31,6 +41,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    // Validar se é admin
+    const { user: adminUser, error } = await requireAdmin(request);
+    if (error || !adminUser) {
+      return NextResponse.json(
+        { error: error || 'Acesso negado' },
+        { status: 403 }
+      );
+    }
+
     const resolvedParams = params instanceof Promise ? await params : params;
     const { id } = resolvedParams;
     const { name, email, password, role, is_active } = await request.json();
@@ -78,6 +97,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    // Validar se é admin
+    const { user: adminUser, error } = await requireAdmin(request);
+    if (error || !adminUser) {
+      return NextResponse.json(
+        { error: error || 'Acesso negado' },
+        { status: 403 }
+      );
+    }
+
     const resolvedParams = params instanceof Promise ? await params : params;
     const { id } = resolvedParams;
     await User.delete(id);

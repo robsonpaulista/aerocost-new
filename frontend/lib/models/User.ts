@@ -80,7 +80,6 @@ export class User {
    * Busca usuário por email
    */
   static async findByEmail(email: string) {
-    console.log('[AUTH] Buscando usuário por email:', email);
     try {
       const q = query(
         collection(db, this.collectionName),
@@ -90,20 +89,11 @@ export class User {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        console.log('[AUTH] Usuário não encontrado');
         return null;
       }
       
       const doc = querySnapshot.docs[0];
       const data = doc.data();
-      
-      console.log('[AUTH] Usuário encontrado:', {
-        id: doc.id,
-        email: data.email,
-        is_active: data.is_active,
-        hashLength: data.password_hash?.length,
-        hashPrefix: data.password_hash?.substring(0, 15)
-      });
       
       return {
         id: doc.id,
@@ -115,7 +105,6 @@ export class User {
         updated_at: data.updated_at?.toDate?.()?.toISOString() || data.updated_at,
       } as any;
     } catch (error) {
-      console.log('[AUTH] Erro ao buscar usuário:', error);
       throw error;
     }
   }
@@ -127,36 +116,36 @@ export class User {
     const user = await this.findByEmail(email);
     
     if (!user) {
-      console.log('[AUTH] Usuário não encontrado:', email);
       return null;
     }
 
     if (!user.is_active) {
-      console.log('[AUTH] Usuário inativo:', email);
       throw new Error('Usuário inativo');
     }
 
-    const hashStartsWithBcrypt = user.password_hash && user.password_hash.startsWith('$2');
-    
-    console.log('[AUTH] Verificando senha:', {
-      email,
-      hashLength: user.password_hash?.length,
-      hashStartsWithBcrypt,
-      hashPrefix: user.password_hash?.substring(0, 15),
-      passwordLength: password?.length
-    });
+    // Verificar se o hash está no formato bcrypt válido ($2a$, $2b$, $2y$)
+    const hashStartsWithBcrypt = user.password_hash && (
+      user.password_hash.startsWith('$2a$') || 
+      user.password_hash.startsWith('$2b$') || 
+      user.password_hash.startsWith('$2y$')
+    );
 
     let isValid = false;
     
-    try {
-      isValid = await bcrypt.compare(password, user.password_hash);
-      console.log('[AUTH] Resultado bcrypt.compare:', isValid);
-    } catch (bcryptError) {
-      console.log('[AUTH] Erro no bcrypt.compare:', bcryptError);
-      isValid = false;
+    // Se o hash não está no formato bcrypt, pode ser um hash do PostgreSQL crypt()
+    // Nesse caso, precisamos resetar a senha
+    if (!hashStartsWithBcrypt) {
+      // Hash inválido ou em formato incompatível
+      // Retornar null para indicar credenciais inválidas
+      // O usuário precisará resetar a senha
+      return null;
     }
     
-    console.log('[AUTH] Resultado final da validação:', isValid);
+    try {
+      isValid = await bcrypt.compare(password, user.password_hash);
+    } catch (bcryptError) {
+      isValid = false;
+    }
     
     if (!isValid) {
       return null;
@@ -192,28 +181,33 @@ export class User {
   /**
    * Cria novo usuário
    */
-  static async create(userData: { name: string; email: string; password: string; role?: string; is_active?: boolean }) {
+  static async create(userData: { name: string; email: string; password?: string; role?: string; is_active?: boolean }) {
     try {
-      // Hash da senha antes de salvar
-      if (!userData.password) {
-        throw new Error('Password is required');
+      // Hash da senha antes de salvar (se fornecida)
+      let password_hash: string | undefined = undefined;
+      if (userData.password) {
+        const salt = await bcrypt.genSalt(10);
+        password_hash = await bcrypt.hash(userData.password, salt);
       }
-
-      const salt = await bcrypt.genSalt(10);
-      const password_hash = await bcrypt.hash(userData.password, salt);
       
       const docRef = doc(collection(db, this.collectionName));
       const now = new Date().toISOString();
       
-      await setDoc(docRef, {
+      const userDoc: any = {
         name: userData.name,
         email: userData.email,
-        password_hash,
         role: userData.role || 'user',
         is_active: userData.is_active !== undefined ? userData.is_active : true,
         created_at: now,
         updated_at: now,
-      });
+      };
+
+      // Só adicionar password_hash se foi fornecido
+      if (password_hash) {
+        userDoc.password_hash = password_hash;
+      }
+      
+      await setDoc(docRef, userDoc);
       
       return {
         id: docRef.id,

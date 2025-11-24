@@ -217,17 +217,51 @@ export const dashboardApi = {
     api.get(`/dashboard/${aircraftId}`).then(res => res.data),
 };
 
+// Interceptor para adicionar email do usuário atual nas requisições de usuários
+const userApiInstance = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Adicionar email do usuário atual nos headers
+userApiInstance.interceptors.request.use(
+  (config) => {
+    // Buscar email do usuário do localStorage
+    const savedUser = localStorage.getItem('aeroCost_user');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        if (user.email) {
+          config.headers['x-user-email'] = user.email;
+        }
+      } catch {
+        // Ignorar erro de parsing
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export const userApi = {
-  list: () => api.get<User[]>('/users').then(res => res.data),
-  get: (id: string) => api.get<User>(`/users/${id}`).then(res => res.data),
+  list: () => userApiInstance.get<User[]>('/users').then(res => res.data),
+  get: (id: string) => userApiInstance.get<User>(`/users/${id}`).then(res => res.data),
+  getByEmail: (email: string) => api.get<User>(`/users/by-email?email=${encodeURIComponent(email)}`).then(res => res.data).catch(err => {
+    if (err.response?.status === 404) {
+      return null;
+    }
+    throw err;
+  }),
   create: (data: { name: string; email: string; password: string; role?: 'admin' | 'user'; is_active?: boolean }) =>
-    api.post<User>('/users', data).then(res => res.data),
+    userApiInstance.post<User>('/users', data).then(res => res.data),
   update: (id: string, data: Partial<{ name: string; email: string; password: string; role: 'admin' | 'user'; is_active: boolean }>) =>
-    api.put<User>(`/users/${id}`, data).then(res => res.data),
-  delete: (id: string) => api.delete(`/users/${id}`).then(res => res.data),
-  deletePermanent: (id: string) => api.delete(`/users/${id}/permanent`).then(res => res.data),
-  login: (email: string, password: string) =>
-    api.post<{ user: User; message: string }>('/users/login', { email, password }).then(res => res.data),
+    userApiInstance.put<User>(`/users/${id}`, data).then(res => res.data),
+  delete: (id: string) => userApiInstance.delete(`/users/${id}`).then(res => res.data),
+  deletePermanent: (id: string) => userApiInstance.delete(`/users/${id}/permanent`).then(res => res.data),
 };
 
 export default api;

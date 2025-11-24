@@ -20,7 +20,8 @@ import {
   ChevronRight,
   FileText,
   BarChart3,
-  LogOut
+  LogOut,
+  Users
 } from 'lucide-react';
 import { useAircraft } from '@/contexts/AircraftContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,9 +53,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
       {/* Header com Gradiente Azul */}
-      <header className="bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md sticky top-0 z-50">
+      <header className="bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md z-50 flex-shrink-0">
         <div className="px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             {/* Logo e Menu Mobile */}
@@ -114,7 +115,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             transform transition-all duration-300 ease-in-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             pt-16 lg:pt-0
-            h-[calc(100vh-4rem)] lg:h-full
+            h-full
           `}
         >
           <div className={`h-full flex flex-col ${sidebarExpanded ? 'px-4 py-4' : 'px-2 py-4'}`}>
@@ -332,6 +333,38 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {sidebarExpanded && (
                 <div className="mb-4">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+                    Administração
+                  </p>
+                </div>
+              )}
+
+              {/* Usuários - Apenas para admins */}
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => {
+                    router.push('/users');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center ${sidebarExpanded ? 'justify-start' : 'justify-center'} py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors relative group ${
+                    isActive('/users') ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                  }`}
+                  title="Gerenciar Usuários"
+                >
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5" />
+                    {sidebarExpanded && <span>Usuários</span>}
+                  </div>
+                  {!sidebarExpanded && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
+                      Usuários
+                    </div>
+                  )}
+                </button>
+              )}
+
+              {sidebarExpanded && (
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
                     Relatórios
                   </p>
                 </div>
@@ -410,7 +443,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-100 min-w-0 h-[calc(100vh-4rem)] lg:h-full">
+        <main className="flex-1 overflow-y-auto bg-gray-100 min-w-0 h-full">
           <div className="p-4 sm:p-6 lg:p-8">
             {/* Botão Nova Aeronave e Seletor de Aeronave */}
             {pathname !== '/fx-rates' && 

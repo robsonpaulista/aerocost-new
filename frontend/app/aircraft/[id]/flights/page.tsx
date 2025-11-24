@@ -44,19 +44,7 @@ export default function FlightsPage() {
     if (aircraftId) {
       loadData();
     }
-  }, [aircraftId]);
-
-  // Recarregar quando a página ganhar foco (útil após criar um voo)
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log('[FlightsPage] Página ganhou foco, recarregando dados...');
-      if (aircraftId) {
-        loadData();
-      }
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aircraftId]);
 
   // Função para formatar data corretamente (evita problema de timezone)
@@ -73,36 +61,20 @@ export default function FlightsPage() {
   const loadData = async () => {
     try {
       setLoadingData(true);
-      console.log('[FlightsPage] Carregando dados para aeronave:', aircraftId);
       
       const [aircraftData, routesData, flightsData] = await Promise.all([
         aircraftApi.get(aircraftId),
-        routeApi.list().catch((err) => {
-          console.error('Erro ao carregar rotas:', err);
-          return [];
-        }),
-        flightApi.list(aircraftId).catch((err) => {
-          console.error('Erro ao carregar voos:', err);
-          return [];
-        }),
+        routeApi.list().catch(() => []),
+        flightApi.list(aircraftId).catch(() => []),
       ]);
-
-      console.log('[FlightsPage] Dados carregados:', {
-        aircraft: aircraftData?.name,
-        routesCount: routesData?.length || 0,
-        flightsCount: flightsData?.length || 0,
-        flights: flightsData
-      });
       
       setAircraft(aircraftData);
       const routesArray = Array.isArray(routesData) ? routesData : [];
       setRoutes(routesArray);
       
       const flightsArray = Array.isArray(flightsData) ? flightsData : [];
-      console.log('[FlightsPage] Voos processados:', flightsArray);
       setFlights(flightsArray);
     } catch (error: any) {
-      console.error('[FlightsPage] Erro ao carregar dados:', error);
       if (error.response?.status === 404) {
         router.push('/');
       }
@@ -145,7 +117,6 @@ export default function FlightsPage() {
       resetForm();
       alert(editingFlight ? 'Voo atualizado com sucesso!' : 'Voo criado com sucesso!');
     } catch (error: any) {
-      console.error('Erro ao salvar voo:', error);
       if (error.response?.data?.details) {
         const fieldErrors: Record<string, string> = {};
         error.response.data.details.forEach((detail: any) => {
@@ -167,7 +138,6 @@ export default function FlightsPage() {
       await flightApi.delete(id);
       await loadData();
     } catch (error: any) {
-      console.error('Erro ao excluir voo:', error);
       alert('Erro ao excluir voo: ' + (error.response?.data?.error || error.message));
     }
   };
@@ -186,7 +156,6 @@ export default function FlightsPage() {
       await flightApi.markAsCompleted(flight.id!, actualLegTime);
       await loadData();
     } catch (error: any) {
-      console.error('Erro ao marcar voo como completado:', error);
       alert('Erro ao marcar voo como completado: ' + (error.response?.data?.error || error.message));
     }
   };
@@ -267,7 +236,6 @@ export default function FlightsPage() {
             }));
           }
         } catch (error: any) {
-          console.error('Erro ao carregar detalhes do custo:', error);
           // Em caso de erro, ainda assim marcar como carregado para não ficar tentando
           setFlightCostDetails(prev => ({
             ...prev,

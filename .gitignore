@@ -1,9 +1,17 @@
 ﻿node_modules/
 **/node_modules/
 .env
+.env.local
 .next/
 dist/
 build/
+
+# Backend antigo (não usado mais - tudo está no frontend)
+src/
+api/
+package.json
+package-lock.json
+
 # NÃO rastrear outros projetos!
 OneDrive/
 JArchive/

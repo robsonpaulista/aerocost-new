@@ -1,5 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore, collection } from 'firebase/firestore';
+import { getAuth, Auth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyBkyecudggZu5mdPQSivo5U5Z-WTGXcLuc",
@@ -28,6 +29,21 @@ if (getApps().length === 0) {
 
 // Initialize Firestore
 export const db: Firestore = getFirestore(app);
+
+// Initialize Firebase Authentication (apenas no cliente)
+let authInstance: Auth | null = null;
+
+export const getAuthInstance = (): Auth => {
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase Auth só pode ser usado no cliente');
+  }
+  
+  if (!authInstance) {
+    authInstance = getAuth(app);
+  }
+  
+  return authInstance;
+};
 
 // Log de inicialização
 console.log('🔥 Firebase inicializado:', {
