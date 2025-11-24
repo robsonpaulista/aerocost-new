@@ -1,76 +1,106 @@
-import { supabase } from '../config/supabase';
+import { db } from '../config/firebase';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  Timestamp,
+  serverTimestamp 
+} from 'firebase/firestore';
 
 export class FixedCost {
+  private static collectionName = 'fixed_costs';
+
   /**
    * Busca custos fixos por aeronave
    */
   static async findByAircraftId(aircraftId: string) {
-    const { data, error } = await supabase
-      .from('fixed_costs')
-      .select('*')
-      .eq('aircraft_id', aircraftId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    try {
+      const q = query(
+        collection(db, this.collectionName),
+        where('aircraft_id', '==', aircraftId)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        return null;
+      }
+      
+      const doc = querySnapshot.docs[0];
+      const data = doc.data();
+      
+      return {
+        id: doc.id,
+        ...data,
+        // Converter Timestamps para ISO strings
+        created_at: data.created_at?.toDate?.()?.toISOString() || data.created_at,
+        updated_at: data.updated_at?.toDate?.()?.toISOString() || data.updated_at,
+        // Garantir que valores numéricos são números
+        crew_monthly: typeof data.crew_monthly === 'string' ? parseFloat(data.crew_monthly) : (data.crew_monthly || 0),
+        pilot_hourly_rate: typeof data.pilot_hourly_rate === 'string' ? parseFloat(data.pilot_hourly_rate) : (data.pilot_hourly_rate || 0),
+        hangar_monthly: typeof data.hangar_monthly === 'string' ? parseFloat(data.hangar_monthly) : (data.hangar_monthly || 0),
+        ec_fixed_usd: typeof data.ec_fixed_usd === 'string' ? parseFloat(data.ec_fixed_usd) : (data.ec_fixed_usd || 0),
+        insurance: typeof data.insurance === 'string' ? parseFloat(data.insurance) : (data.insurance || 0),
+        administration: typeof data.administration === 'string' ? parseFloat(data.administration) : (data.administration || 0),
+      };
+    } catch (error) {
+      console.error('[FixedCost.findByAircraftId] Erro:', error);
+      throw error;
+    }
   }
 
   /**
    * Cria ou atualiza custos fixos
    */
   static async upsert(fixedCostData: any) {
-    console.log('[FixedCost.upsert] Dados recebidos:', fixedCostData);
-    
-    // Se já existe um registro para esta aeronave, buscar o ID primeiro
-    let existingId: string | null = null;
-    if (fixedCostData.aircraft_id) {
+    try {
+      // Verificar se já existe um registro para esta aeronave
       const existing = await this.findByAircraftId(fixedCostData.aircraft_id);
+      
+      const now = new Date().toISOString();
+      const dataToSave = {
+        aircraft_id: fixedCostData.aircraft_id,
+        crew_monthly: Number(fixedCostData.crew_monthly) || 0,
+        pilot_hourly_rate: Number(fixedCostData.pilot_hourly_rate) || 0,
+        hangar_monthly: Number(fixedCostData.hangar_monthly) || 0,
+        ec_fixed_usd: Number(fixedCostData.ec_fixed_usd) || 0,
+        insurance: Number(fixedCostData.insurance) || 0,
+        administration: Number(fixedCostData.administration) || 0,
+        updated_at: now,
+      };
+
       if (existing) {
-        existingId = existing.id;
-        console.log('[FixedCost.upsert] Registro existente encontrado:', existing);
+        // UPDATE - usar o ID existente
+        const docRef = doc(db, this.collectionName, existing.id);
+        await updateDoc(docRef, dataToSave);
+        
+        return {
+          id: existing.id,
+          ...dataToSave,
+          created_at: existing.created_at,
+        };
       } else {
-        console.log('[FixedCost.upsert] Nenhum registro existente encontrado');
+        // INSERT - criar novo documento
+        const docRef = doc(collection(db, this.collectionName));
+        await setDoc(docRef, {
+          ...dataToSave,
+          created_at: now,
+        });
+        
+        return {
+          id: docRef.id,
+          ...dataToSave,
+          created_at: now,
+        };
       }
-    }
-
-    // Se tem ID, fazer update; senão, fazer insert
-    if (existingId || fixedCostData.id) {
-      const idToUpdate = existingId || fixedCostData.id;
-      // Remover id e aircraft_id do objeto de update (não devem ser atualizados)
-      const { id, aircraft_id, ...updateData } = fixedCostData;
-      
-      console.log('[FixedCost.upsert] Fazendo UPDATE com ID:', idToUpdate);
-      console.log('[FixedCost.upsert] Dados para update:', updateData);
-      
-      const { data, error } = await supabase
-        .from('fixed_costs')
-        .update(updateData)
-        .eq('id', idToUpdate)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[FixedCost.upsert] Erro no update:', error);
-        throw error;
-      }
-      
-      console.log('[FixedCost.upsert] Update realizado com sucesso:', data);
-      return data;
-    } else {
-      console.log('[FixedCost.upsert] Fazendo INSERT');
-      const { data, error } = await supabase
-        .from('fixed_costs')
-        .insert([fixedCostData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[FixedCost.upsert] Erro no insert:', error);
-        throw error;
-      }
-      
-      console.log('[FixedCost.upsert] Insert realizado com sucesso:', data);
-      return data;
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -78,44 +108,57 @@ export class FixedCost {
    * Atualiza custos fixos
    */
   static async update(id: string, fixedCostData: any) {
-    console.log('[FixedCost.update] ID:', id);
-    console.log('[FixedCost.update] Dados recebidos:', fixedCostData);
-    console.log('[FixedCost.update] insurance recebido:', fixedCostData.insurance);
     
-    // Garantir que aircraft_id não seja atualizado
-    const { aircraft_id, ...updateData } = fixedCostData;
-    
-    console.log('[FixedCost.update] Dados para update (sem aircraft_id):', updateData);
-    
-    const { data, error } = await supabase
-      .from('fixed_costs')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[FixedCost.update] Erro:', error);
+    try {
+      const docRef = doc(db, this.collectionName, id);
+      
+      const updateData = {
+        crew_monthly: Number(fixedCostData.crew_monthly) || 0,
+        pilot_hourly_rate: Number(fixedCostData.pilot_hourly_rate) || 0,
+        hangar_monthly: Number(fixedCostData.hangar_monthly) || 0,
+        ec_fixed_usd: Number(fixedCostData.ec_fixed_usd) || 0,
+        insurance: Number(fixedCostData.insurance) || 0,
+        administration: Number(fixedCostData.administration) || 0,
+        updated_at: new Date().toISOString(),
+      };
+      
+      console.log('[FixedCost.update] Dados para update:', updateData);
+      
+      await updateDoc(docRef, updateData);
+      
+      // Buscar o documento atualizado
+      const updatedDoc = await getDoc(docRef);
+      const data = updatedDoc.data();
+      
+      
+      return {
+        id: updatedDoc.id,
+        ...data,
+        created_at: data?.created_at?.toDate?.()?.toISOString() || data?.created_at,
+        updated_at: data?.updated_at?.toDate?.()?.toISOString() || data?.updated_at,
+        crew_monthly: typeof data?.crew_monthly === 'string' ? parseFloat(data.crew_monthly) : (data?.crew_monthly || 0),
+        pilot_hourly_rate: typeof data?.pilot_hourly_rate === 'string' ? parseFloat(data.pilot_hourly_rate) : (data?.pilot_hourly_rate || 0),
+        hangar_monthly: typeof data?.hangar_monthly === 'string' ? parseFloat(data.hangar_monthly) : (data?.hangar_monthly || 0),
+        ec_fixed_usd: typeof data?.ec_fixed_usd === 'string' ? parseFloat(data.ec_fixed_usd) : (data?.ec_fixed_usd || 0),
+        insurance: typeof data?.insurance === 'string' ? parseFloat(data.insurance) : (data?.insurance || 0),
+        administration: typeof data?.administration === 'string' ? parseFloat(data.administration) : (data?.administration || 0),
+      };
+    } catch (error) {
       throw error;
     }
-    
-    console.log('[FixedCost.update] Dados retornados do banco:', data);
-    console.log('[FixedCost.update] insurance retornado:', data?.insurance);
-    
-    return data;
   }
 
   /**
    * Remove custos fixos
    */
   static async delete(id: string) {
-    const { error } = await supabase
-      .from('fixed_costs')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    return { success: true };
+    try {
+      const docRef = doc(db, this.collectionName, id);
+      await deleteDoc(docRef);
+      return { success: true };
+    } catch (error) {
+      console.error('[FixedCost.delete] Erro:', error);
+      throw error;
+    }
   }
 }
-

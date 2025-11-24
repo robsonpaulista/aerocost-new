@@ -1,5 +1,6 @@
 // API Route do Next.js para Leg Cost
 import { NextRequest, NextResponse } from 'next/server';
+import { CalculationService } from '@/lib/services/calculationService';
 
 export async function GET(
   request: NextRequest,
@@ -11,22 +12,20 @@ export async function GET(
     
     // Obter query params
     const searchParams = request.nextUrl.searchParams;
-    const legTime = searchParams.get('legTime');
-    const routeId = searchParams.get('routeId');
+    const legTimeParam = searchParams.get('legTime');
+    const routeIdParam = searchParams.get('routeId');
     
-    // TODO: Implementar cálculo de custo por perna
-    // Por enquanto, retorna estrutura básica
-    return NextResponse.json({
-      legTime: legTime ? parseFloat(legTime) : 0,
-      routeId: routeId || null,
-      totalCost: 0,
-      breakdown: {
-        fixed: 0,
-        variable: 0,
-        decea: 0,
-      },
-      calculatedAt: new Date().toISOString(),
-    });
+    const legTime = legTimeParam ? parseFloat(legTimeParam) : undefined;
+    const routeId = routeIdParam || undefined;
+    
+    // Calcular custo usando o CalculationService
+    const result = await CalculationService.calculateLegCost(
+      aircraftId,
+      legTime,
+      routeId || null
+    );
+    
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error('[Calculations API Error]', error);
     return NextResponse.json(

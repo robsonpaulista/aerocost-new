@@ -1,46 +1,10 @@
 import axios from 'axios';
 
-// Detecta automaticamente se está em rede local, localhost ou Vercel
-const getApiUrl = () => {
-  // Se estiver rodando no navegador, detecta o hostname PRIMEIRO
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const port = window.location.port;
-    console.log('[API] Hostname detectado:', hostname, 'Porta:', port);
-    
-    // Se estiver no Vercel (vercel.app), SEMPRE usa caminho relativo
-    // Ignora a variável de ambiente para forçar uso do mesmo domínio
-    if (hostname.includes('vercel.app') || hostname.includes('vercel.sh')) {
-      const apiUrl = '/api';
-      console.log('[API] URL da API (Vercel - relativo):', apiUrl);
-      return apiUrl;
-    }
-    
-    // Se não for localhost, assume que é acesso pela rede local
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // Usa o mesmo hostname da página atual, mas na porta 3000
-      const apiUrl = `http://${hostname}:3000/api`;
-      console.log('[API] URL da API (rede local):', apiUrl);
-      return apiUrl;
-    }
-  }
-  
-  // Se estiver definido na variável de ambiente E não estiver no Vercel, usa ela
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    console.log('[API] Usando URL da variável de ambiente:', process.env.NEXT_PUBLIC_API_URL);
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  
-  // Padrão: localhost
-  const defaultUrl = 'http://localhost:3000/api';
-  console.log('[API] URL da API (padrão):', defaultUrl);
-  return defaultUrl;
-};
+// SEMPRE usa as API Routes do Next.js (caminho relativo)
+// Não precisa mais de backend separado - tudo está no Next.js
+const API_URL = '/api';
 
-const API_URL = getApiUrl();
-
-// Log da URL final
-console.log('[API] URL da API configurada:', API_URL);
+// API Routes do Next.js
 
 const api = axios.create({
   baseURL: API_URL,
@@ -63,41 +27,19 @@ api.interceptors.request.use(
       };
     }
     
-    console.log('[API REQUEST]', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullURL: `${config.baseURL}${config.url}`,
-      params: config.params,
-      data: config.data
-    });
     return config;
   },
   (error) => {
-    console.error('[API REQUEST ERROR]', error);
     return Promise.reject(error);
   }
 );
 
-// Interceptor para logar todas as respostas
+// Interceptor para respostas
 api.interceptors.response.use(
   (response) => {
-    console.log('[API RESPONSE]', {
-      status: response.status,
-      url: response.config.url,
-      data: response.data
-    });
     return response;
   },
   (error) => {
-    console.error('[API RESPONSE ERROR]', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      url: error.config?.url,
-      baseURL: error.config?.baseURL,
-      fullURL: error.config ? `${error.config.baseURL}${error.config.url}` : 'N/A'
-    });
     return Promise.reject(error);
   }
 );
@@ -149,7 +91,6 @@ export interface VariableCost {
 
 export interface Route {
   id?: string;
-  aircraft_id: string;
   origin: string;
   destination: string;
   decea_per_hour: number;
@@ -212,8 +153,8 @@ export const variableCostApi = {
 };
 
 export const routeApi = {
-  list: (aircraftId: string) =>
-    api.get<Route[]>(`/routes/aircraft/${aircraftId}`).then(res => res.data),
+  list: () =>
+    api.get<Route[]>('/routes').then(res => res.data),
   get: (id: string) => api.get<Route>(`/routes/single/${id}`).then(res => res.data),
   create: (data: Omit<Route, 'id'>) =>
     api.post<Route>('/routes', data).then(res => res.data),
@@ -246,8 +187,15 @@ export const calculationApi = {
 };
 
 export const flightApi = {
-  list: (aircraftId: string, filters?: { flight_type?: string; start_date?: string; end_date?: string; limit?: number }) =>
-    api.get(`/flights/aircraft/${aircraftId}`, { params: filters }).then(res => res.data),
+  list: (aircraftId: string, filters?: { flight_type?: string; start_date?: string; end_date?: string; limit?: number }) => {
+    return api.get(`/flights/aircraft/${aircraftId}`, { 
+      params: filters,
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    }).then(res => res.data);
+  },
   get: (id: string) =>
     api.get(`/flights/single/${id}`).then(res => res.data),
   create: (data: Flight) =>

@@ -4,20 +4,9 @@ import { Route } from '@/lib/models/Route';
 
 export async function GET(request: NextRequest) {
   try {
-    // Buscar aircraftId da query string
-    const { searchParams } = new URL(request.url);
-    const aircraftId = searchParams.get('aircraftId');
-    
-    if (aircraftId) {
-      // Listar rotas por aircraft
-      const routes = await Route.findByAircraftId(aircraftId);
-      return NextResponse.json(routes);
-    } else {
-      return NextResponse.json(
-        { error: 'aircraftId is required' },
-        { status: 400 }
-      );
-    }
+    // Rotas são independentes de aeronave - retornar todas
+    const routes = await Route.findAll();
+    return NextResponse.json(routes);
   } catch (error: any) {
     console.error('[Routes API Error]', error);
     return NextResponse.json(

@@ -22,6 +22,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(aircraft, { status: 201 });
   } catch (error: any) {
     console.error('[Aircraft API Error]', error);
+    
+    // Erro específico do Firestore não habilitado
+    if (error.message?.includes('Firestore não está habilitado')) {
+      return NextResponse.json(
+        { 
+          error: error.message,
+          help: 'Acesse o Firebase Console e crie o Firestore Database. Veja HABILITAR_FIRESTORE.md para instruções.'
+        },
+        { status: 503 }
+      );
+    }
+    
     if (error.code === '23505') {
       return NextResponse.json(
         { error: 'Registration already exists' },

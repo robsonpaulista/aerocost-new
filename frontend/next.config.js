@@ -13,9 +13,9 @@ const nextConfig = {
     'http://192.168.3.247:3002',
     'http://localhost:3002',
   ],
-  // Permitir importar de fora do frontend (para usar controllers do Express)
+  // Configuração experimental
   experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js'],
+    serverComponentsExternalPackages: ['firebase'],
   },
 }
 

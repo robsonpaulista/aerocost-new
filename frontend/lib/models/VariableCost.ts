@@ -1,18 +1,48 @@
-import { supabase } from '../config/supabase';
+import { db } from '../config/firebase';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where 
+} from 'firebase/firestore';
 
 export class VariableCost {
+  private static collectionName = 'variable_costs';
+
   /**
    * Busca custos variáveis por aeronave
    */
   static async findByAircraftId(aircraftId: string) {
-    const { data, error } = await supabase
-      .from('variable_costs')
-      .select('*')
-      .eq('aircraft_id', aircraftId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    try {
+      const q = query(
+        collection(db, this.collectionName),
+        where('aircraft_id', '==', aircraftId)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        return null;
+      }
+      
+      const doc = querySnapshot.docs[0];
+      const data = doc.data();
+      
+      return {
+        id: doc.id,
+        ...data,
+        created_at: data.created_at?.toDate?.()?.toISOString() || data.created_at,
+        updated_at: data.updated_at?.toDate?.()?.toISOString() || data.updated_at,
+      };
+    } catch (error) {
+      console.error('[VariableCost.findByAircraftId] Erro:', error);
+      throw error;
+    }
   }
 
   /**
@@ -21,56 +51,51 @@ export class VariableCost {
   static async upsert(variableCostData: any) {
     console.log('[VariableCost.upsert] Dados recebidos:', variableCostData);
     
-    // Se já existe um registro para esta aeronave, buscar o ID primeiro
-    let existingId: string | null = null;
-    if (variableCostData.aircraft_id) {
+    try {
+      // Verificar se já existe um registro para esta aeronave
       const existing = await this.findByAircraftId(variableCostData.aircraft_id);
+      
+      const now = new Date().toISOString();
+      const dataToSave = {
+        aircraft_id: variableCostData.aircraft_id,
+        ...variableCostData,
+        updated_at: now,
+      };
+      
+      // Remover id do objeto de dados
+      delete dataToSave.id;
+
       if (existing) {
-        existingId = existing.id;
-        console.log('[VariableCost.upsert] Registro existente encontrado:', existing);
+        // UPDATE - usar o ID existente
+        const docRef = doc(db, this.collectionName, existing.id);
+        await updateDoc(docRef, dataToSave);
+        
+        console.log('[VariableCost.upsert] Update realizado com sucesso');
+        
+        return {
+          id: existing.id,
+          ...dataToSave,
+          created_at: existing.created_at,
+        };
       } else {
-        console.log('[VariableCost.upsert] Nenhum registro existente encontrado');
+        // INSERT - criar novo documento
+        const docRef = doc(collection(db, this.collectionName));
+        await setDoc(docRef, {
+          ...dataToSave,
+          created_at: now,
+        });
+        
+        console.log('[VariableCost.upsert] Insert realizado com sucesso');
+        
+        return {
+          id: docRef.id,
+          ...dataToSave,
+          created_at: now,
+        };
       }
-    }
-
-    // Se tem ID, fazer update; senão, fazer insert
-    if (existingId || variableCostData.id) {
-      const idToUpdate = existingId || variableCostData.id;
-      // Remover id e aircraft_id do objeto de update (não devem ser atualizados)
-      const { id, aircraft_id, ...updateData } = variableCostData;
-      
-      console.log('[VariableCost.upsert] Fazendo UPDATE com ID:', idToUpdate);
-      console.log('[VariableCost.upsert] Dados para update:', updateData);
-      
-      const { data, error } = await supabase
-        .from('variable_costs')
-        .update(updateData)
-        .eq('id', idToUpdate)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[VariableCost.upsert] Erro no update:', error);
-        throw error;
-      }
-      
-      console.log('[VariableCost.upsert] Update realizado com sucesso:', data);
-      return data;
-    } else {
-      console.log('[VariableCost.upsert] Fazendo INSERT');
-      const { data, error } = await supabase
-        .from('variable_costs')
-        .insert([variableCostData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[VariableCost.upsert] Erro no insert:', error);
-        throw error;
-      }
-      
-      console.log('[VariableCost.upsert] Insert realizado com sucesso:', data);
-      return data;
+    } catch (error) {
+      console.error('[VariableCost.upsert] Erro:', error);
+      throw error;
     }
   }
 
@@ -78,28 +103,46 @@ export class VariableCost {
    * Atualiza custos variáveis
    */
   static async update(id: string, variableCostData: any) {
-    const { data, error } = await supabase
-      .from('variable_costs')
-      .update(variableCostData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    try {
+      const docRef = doc(db, this.collectionName, id);
+      
+      const updateData = {
+        ...variableCostData,
+        updated_at: new Date().toISOString(),
+      };
+      
+      delete updateData.id;
+      delete updateData.aircraft_id;
+      
+      await updateDoc(docRef, updateData);
+      
+      // Buscar o documento atualizado
+      const updatedDoc = await getDoc(docRef);
+      const data = updatedDoc.data();
+      
+      return {
+        id: updatedDoc.id,
+        ...data,
+        created_at: data?.created_at?.toDate?.()?.toISOString() || data?.created_at,
+        updated_at: data?.updated_at?.toDate?.()?.toISOString() || data?.updated_at,
+      };
+    } catch (error) {
+      console.error('[VariableCost.update] Erro:', error);
+      throw error;
+    }
   }
 
   /**
    * Remove custos variáveis
    */
   static async delete(id: string) {
-    const { error } = await supabase
-      .from('variable_costs')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    return { success: true };
+    try {
+      const docRef = doc(db, this.collectionName, id);
+      await deleteDoc(docRef);
+      return { success: true };
+    } catch (error) {
+      console.error('[VariableCost.delete] Erro:', error);
+      throw error;
+    }
   }
 }
-

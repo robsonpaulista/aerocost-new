@@ -32,15 +32,7 @@ export default function VariableCostsPage() {
 
   useEffect(() => {
     loadData();
-  }, [aircraftId]);
-
-  // Recarregar dados quando a página recebe foco (útil após salvar e voltar)
-  useEffect(() => {
-    const handleFocus = () => {
-      loadData();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aircraftId]);
 
   const loadData = async () => {
@@ -60,7 +52,6 @@ export default function VariableCostsPage() {
         setExistingVariableCostId(null);
       }
     } catch (error: any) {
-      console.error('Erro ao carregar dados:', error);
       if (error.response?.status === 404) {
         router.push('/');
       }
@@ -103,11 +94,8 @@ export default function VariableCostsPage() {
       }
       
       alert('Custos variáveis salvos com sucesso!');
-      // Recarregar dados do servidor para garantir sincronização
-      await loadData();
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
-      console.error('Erro ao salvar custos variáveis:', error);
       if (error.response?.data?.details) {
         const validationErrors: Record<string, string> = {};
         error.response.data.details.forEach((err: any) => {

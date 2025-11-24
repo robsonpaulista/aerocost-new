@@ -6,14 +6,18 @@ import { Save } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import AppLayout from '@/components/AppLayout';
 import { aircraftApi } from '@/lib/api';
+import { useAircraft } from '@/contexts/AircraftContext';
 import type { Aircraft } from '@/lib/api';
 
 export default function EditAircraftPage() {
   const router = useRouter();
   const params = useParams();
-  const aircraftId = params.id as string;
+  const { aircrafts } = useAircraft();
+  // Priorizar o ID da URL, que é a fonte de verdade
+  const aircraftId = (params.id as string) || '';
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -26,25 +30,44 @@ export default function EditAircraftPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Recarregar dados quando o aircraftId da URL mudar
   useEffect(() => {
-    loadAircraft();
+    if (aircraftId) {
+      console.log('[EditAircraftPage] aircraftId mudou, recarregando dados:', aircraftId);
+      loadAircraft();
+    }
   }, [aircraftId]);
 
   const loadAircraft = async () => {
     try {
       setLoadingData(true);
+      console.log('[EditAircraftPage] Carregando aeronave ID:', aircraftId);
       const aircraft = await aircraftApi.get(aircraftId);
+      console.log('[EditAircraftPage] Dados recebidos:', aircraft);
+      
+      // Garantir que todos os valores sejam tratados corretamente
       setFormData({
-        name: aircraft.name,
-        registration: aircraft.registration,
-        model: aircraft.model,
-        monthly_hours: aircraft.monthly_hours.toString(),
-        avg_leg_time: aircraft.avg_leg_time.toString(),
+        name: aircraft.name || '',
+        registration: aircraft.registration || '',
+        model: aircraft.model || '',
+        monthly_hours: aircraft.monthly_hours != null ? aircraft.monthly_hours.toString() : '0',
+        avg_leg_time: aircraft.avg_leg_time != null ? aircraft.avg_leg_time.toString() : '0',
+      });
+      
+      console.log('[EditAircraftPage] FormData atualizado:', {
+        name: aircraft.name || '',
+        registration: aircraft.registration || '',
+        model: aircraft.model || '',
+        monthly_hours: aircraft.monthly_hours != null ? aircraft.monthly_hours.toString() : '0',
+        avg_leg_time: aircraft.avg_leg_time != null ? aircraft.avg_leg_time.toString() : '0',
       });
     } catch (error: any) {
-      console.error('Erro ao carregar aeronave:', error);
+      console.error('[EditAircraftPage] Erro ao carregar aeronave:', error);
       if (error.response?.status === 404) {
-        router.push('/aircraft/new');
+        alert('Aeronave não encontrada');
+        router.push('/');
+      } else {
+        alert('Erro ao carregar dados da aeronave. Tente novamente.');
       }
     } finally {
       setLoadingData(false);
@@ -95,6 +118,30 @@ export default function EditAircraftPage() {
     <AppLayout>
       <Card className="shadow-sm">
         <h3 className="text-base font-semibold text-text mb-4">Editar Aeronave</h3>
+        
+        {/* Seletor de Aeronave */}
+        {aircrafts.length > 0 && (
+          <div className="mb-6">
+            <Select
+              label="Selecionar Aeronave"
+              value={aircraftId || ''}
+              onChange={(e) => {
+                const newAircraftId = e.target.value;
+                if (newAircraftId) {
+                  router.push(`/aircraft/${newAircraftId}/edit`);
+                }
+              }}
+              options={[
+                { value: '', label: 'Selecione uma aeronave...' },
+                ...aircrafts.map((ac) => ({
+                  value: ac.id,
+                  label: `${ac.name} (${ac.registration})`,
+                })),
+              ]}
+            />
+          </div>
+        )}
+        
         <p className="text-sm text-text-light mb-6">
           Atualize as informações da aeronave.
         </p>

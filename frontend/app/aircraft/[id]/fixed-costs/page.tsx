@@ -31,24 +31,13 @@ export default function FixedCostsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Forçar recarregamento sem cache
     loadData();
-  }, [aircraftId]);
-
-  // Recarregar dados quando a página recebe foco (útil após salvar e voltar)
-  useEffect(() => {
-    const handleFocus = () => {
-      // Adicionar timestamp para evitar cache
-      loadData();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aircraftId]);
 
   const loadData = async () => {
     try {
       setLoadingData(true);
-      console.log('[FixedCostsPage] loadData chamado - timestamp:', new Date().toISOString());
       
       const [aircraftData, fixedCostData] = await Promise.all([
         aircraftApi.get(aircraftId),
@@ -57,13 +46,10 @@ export default function FixedCostsPage() {
 
       setAircraft(aircraftData);
       if (fixedCostData) {
-        console.log('[FixedCostsPage] Dados recebidos do servidor:', fixedCostData);
-        console.log('[FixedCostsPage] insurance raw:', fixedCostData.insurance, 'type:', typeof fixedCostData.insurance);
-        
         // Salvar o ID do registro existente
         setExistingFixedCostId(fixedCostData.id || null);
         
-        // Converter valores para números (Supabase pode retornar como string para numeric)
+        // Converter valores para números (Firestore pode retornar como string para numeric)
         const parseNumeric = (value: any): number => {
           if (value === null || value === undefined) return 0;
           const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
@@ -81,9 +67,6 @@ export default function FixedCostsPage() {
           administration: parseNumeric(fixedCostData.administration),
         };
         
-        console.log('[FixedCostsPage] Dados processados para formData:', formDataToSet);
-        console.log('[FixedCostsPage] insurance processado:', formDataToSet.insurance);
-        
         setFormData(formDataToSet);
       } else {
         // Resetar para valores padrão se não houver dados
@@ -99,7 +82,6 @@ export default function FixedCostsPage() {
         });
       }
     } catch (error: any) {
-      console.error('Erro ao carregar dados:', error);
       if (error.response?.status === 404) {
         // Aeronave não encontrada
         router.push('/');
@@ -138,13 +120,9 @@ export default function FixedCostsPage() {
         }
       }
       
-      // Log dos dados salvos para debug
-      console.log('[FixedCostsPage] Dados salvos retornados do servidor:', savedData);
-      console.log('[FixedCostsPage] insurance salvo:', savedData?.insurance);
-      
       // Atualizar o formData com os dados salvos (garantir sincronização)
       if (savedData) {
-        // Converter valores para números (Supabase pode retornar como string)
+        // Converter valores para números (Firestore pode retornar como string)
         const parseNumeric = (value: any): number => {
           if (value === null || value === undefined) return 0;
           const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
@@ -161,9 +139,6 @@ export default function FixedCostsPage() {
           administration: parseNumeric(savedData.administration),
         };
         
-        console.log('[FixedCostsPage] Atualizando formData com dados salvos:', updatedFormData);
-        console.log('[FixedCostsPage] insurance no formData atualizado:', updatedFormData.insurance);
-        
         setFormData(updatedFormData);
       }
       
@@ -172,7 +147,6 @@ export default function FixedCostsPage() {
       // await loadData(); // REMOVIDO - estava causando sobrescrita com valores antigos
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
-      console.error('Erro ao salvar custos fixos:', error);
       if (error.response?.data?.details) {
         const validationErrors: Record<string, string> = {};
         error.response.data.details.forEach((err: any) => {
@@ -301,7 +275,6 @@ export default function FixedCostsPage() {
                 value={typeof formData.insurance === 'number' ? formData.insurance : (parseFloat(String(formData.insurance || '0')) || 0)}
                 onChange={(e) => {
                   const value = parseFloat(e.target.value) || 0;
-                  console.log('[FixedCostsPage] insurance onChange:', value);
                   setFormData({ ...formData, insurance: value });
                 }}
                 error={errors.insurance}
