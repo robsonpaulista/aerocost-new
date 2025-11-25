@@ -52,3 +52,4 @@ Depois de resetar a senha, você poderá fazer login normalmente com:
 - **Email**: o mesmo de antes
 - **Senha**: a nova senha que você definiu
 
+

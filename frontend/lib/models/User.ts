@@ -21,28 +21,31 @@ export class User {
    */
   static async findAll() {
     try {
-      const q = query(
-        collection(db, this.collectionName),
-        orderBy('created_at', 'desc')
-      );
-      
+      // Buscar todos os usuários sem orderBy para evitar problemas de índice
+      const q = query(collection(db, this.collectionName));
       const querySnapshot = await getDocs(q);
       
-      return querySnapshot.docs.map(doc => {
+      const users = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
           name: data.name,
           email: data.email,
-          role: data.role,
-          is_active: data.is_active,
+          role: data.role || 'user',
+          is_active: data.is_active !== undefined ? data.is_active : true,
           last_login: data.last_login?.toDate?.()?.toISOString() || data.last_login,
           created_at: data.created_at?.toDate?.()?.toISOString() || data.created_at,
           updated_at: data.updated_at?.toDate?.()?.toISOString() || data.updated_at,
         };
       });
+      
+      // Ordenar manualmente por data de criação (mais recente primeiro)
+      return users.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      });
     } catch (error) {
-      console.error('[User.findAll] Erro:', error);
       throw error;
     }
   }

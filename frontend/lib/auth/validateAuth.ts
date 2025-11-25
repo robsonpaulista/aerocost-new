@@ -30,7 +30,6 @@ export async function requireAuth(request: NextRequest): Promise<{ user: any; er
 
     return { user };
   } catch (error: any) {
-    console.error('[requireAuth] Erro:', error);
     return { user: null, error: error.message || 'Erro ao validar autenticação' };
   }
 }

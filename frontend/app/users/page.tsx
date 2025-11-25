@@ -27,11 +27,17 @@ export default function UsersPage() {
   });
 
   useEffect(() => {
+    // Aguarda o usuário estar carregado
+    if (!currentUser) {
+      return;
+    }
+    
     // Verifica se é admin
-    if (currentUser?.role !== 'admin') {
+    if (currentUser.role !== 'admin') {
       router.push('/');
       return;
     }
+    
     loadUsers();
   }, [currentUser, router]);
 
@@ -39,10 +45,17 @@ export default function UsersPage() {
     try {
       setLoading(true);
       const data = await userApi.list();
-      setUsers(data);
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
-      alert('Erro ao carregar usuários');
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      const status = error.response?.status;
+      const errorMessage = error.response?.data?.error || error.message || 'Erro ao carregar usuários';
+      
+      if (status === 403) {
+        alert(`Acesso negado: ${errorMessage}. Verifique se você está logado como administrador.`);
+      } else {
+        alert(`Erro ao carregar usuários: ${errorMessage}`);
+      }
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -137,8 +150,24 @@ export default function UsersPage() {
     }
   };
 
-  if (currentUser?.role !== 'admin') {
-    return null;
+  if (!currentUser) {
+    return (
+      <AppLayout>
+        <Card className="text-center py-12">
+          <p className="text-text-light">Carregando informações do usuário...</p>
+        </Card>
+      </AppLayout>
+    );
+  }
+
+  if (currentUser.role !== 'admin') {
+    return (
+      <AppLayout>
+        <Card className="text-center py-12">
+          <p className="text-text-light">Acesso negado. Apenas administradores podem acessar esta página.</p>
+        </Card>
+      </AppLayout>
+    );
   }
 
   return (

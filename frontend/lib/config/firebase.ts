@@ -45,11 +45,13 @@ export const getAuthInstance = (): Auth => {
   return authInstance;
 };
 
-// Log de inicialização
-console.log('🔥 Firebase inicializado:', {
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain,
-});
+// Log de inicialização (apenas em desenvolvimento)
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔥 Firebase inicializado:', {
+    projectId: firebaseConfig.projectId,
+    authDomain: firebaseConfig.authDomain,
+  });
+}
 
 // Verificação adicional (será executada quando tentar usar o Firestore)
 export async function verifyFirestoreConnection() {

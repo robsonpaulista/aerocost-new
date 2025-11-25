@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
     const users = await User.findAll();
     return NextResponse.json(users);
   } catch (error: any) {
-    console.error('[Users API Error]', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
@@ -65,7 +64,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newUser, { status: 201 });
   } catch (error: any) {
-    console.error('[Users API Error]', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

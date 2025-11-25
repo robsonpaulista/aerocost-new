@@ -1,6 +1,8 @@
 // Helper para validar role do usuário nas rotas de API
 import { NextRequest } from 'next/server';
 import { User } from '@/lib/models/User';
+import { collection, query, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/config/firebase';
 
 /**
  * Valida se o usuário autenticado tem permissão de admin
@@ -9,13 +11,8 @@ import { User } from '@/lib/models/User';
  */
 export async function requireAdmin(request: NextRequest): Promise<{ user: any; error?: string }> {
   try {
-    // Por enquanto, vamos usar um header customizado ou buscar do body
-    // Em produção, deve extrair do token JWT do Firebase Auth
-    const authHeader = request.headers.get('authorization');
     const userEmail = request.headers.get('x-user-email');
     
-    // Se não tiver email no header, retorna erro
-    // Em produção, extrair do token JWT
     if (!userEmail) {
       return { 
         user: null, 
@@ -23,8 +20,33 @@ export async function requireAdmin(request: NextRequest): Promise<{ user: any; e
       };
     }
 
-    // Buscar usuário no Firestore
-    const user = await User.findByEmail(userEmail);
+    // Buscar usuário no Firestore (tenta busca exata primeiro, depois case-insensitive)
+    let user = await User.findByEmail(userEmail);
+    
+    // Se não encontrou com busca exata, tenta case-insensitive usando busca direta no Firestore
+    if (!user) {
+      try {
+        const q = query(collection(db, 'users'));
+        const querySnapshot = await getDocs(q);
+        
+        user = querySnapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              email: data.email,
+              role: data.role || 'user',
+              is_active: data.is_active !== undefined ? data.is_active : true,
+            };
+          })
+          .find(u => 
+            u.email?.toLowerCase().trim() === userEmail.toLowerCase().trim()
+          ) || null;
+      } catch (searchError: any) {
+        // Ignorar erro na busca case-insensitive
+      }
+    }
     
     if (!user) {
       return { user: null, error: 'Usuário não encontrado' };
@@ -40,8 +62,8 @@ export async function requireAdmin(request: NextRequest): Promise<{ user: any; e
 
     return { user };
   } catch (error: any) {
-    console.error('[requireAdmin] Erro:', error);
     return { user: null, error: error.message || 'Erro ao validar permissões' };
   }
 }
+
 
