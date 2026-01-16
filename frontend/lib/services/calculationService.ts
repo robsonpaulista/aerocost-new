@@ -46,7 +46,7 @@ export class CalculationService {
         fuel_price_per_liter: (variableCosts as any).fuel_price_per_liter,
         ec_variable_usd: (variableCosts as any).ec_variable_usd,
       } : null,
-      fxRate: fxRate.usd_to_brl,
+      fxRate: (fxRate as any).usd_to_brl,
     });
 
     const avgLegTime = parseFloat((aircraft as any).avg_leg_time || '0');
@@ -63,7 +63,7 @@ export class CalculationService {
       const administration = parseFloat(fixed.administration || '0');
 
       // Converter USD para BRL
-      const ecFixedBrl = ecFixedUsd * parseFloat(fxRate.usd_to_brl || '0');
+      const ecFixedBrl = ecFixedUsd * parseFloat((fxRate as any).usd_to_brl || '0');
 
       // Calcular cada custo fixo mensal por hora (dividir pelas horas mensais)
       const crewPerHour = monthlyHours > 0 ? crewMonthly / monthlyHours : 0;
@@ -87,7 +87,7 @@ export class CalculationService {
       const ccrPerLeg = parseFloat(variable.ccr_per_leg || '0');
 
       // Converter USD para BRL
-      const ecVariableBrl = ecVariableUsd * parseFloat(fxRate.usd_to_brl || '0');
+      const ecVariableBrl = ecVariableUsd * parseFloat((fxRate as any).usd_to_brl || '0');
 
       // Custo de combustível por hora
       const fuelCostPerHour = fuelLitersPerHour * fuelPricePerLiter;
@@ -110,7 +110,7 @@ export class CalculationService {
       const ecFixedUsd = parseFloat(fixed.ec_fixed_usd || '0');
       const insurance = parseFloat(fixed.insurance || '0');
       const administration = parseFloat(fixed.administration || '0');
-      const ecFixedBrl = ecFixedUsd * parseFloat(fxRate.usd_to_brl || '0');
+      const ecFixedBrl = ecFixedUsd * parseFloat((fxRate as any).usd_to_brl || '0');
 
       return {
         crewMonthly: crewMonthly,
@@ -133,7 +133,7 @@ export class CalculationService {
       fuelPricePerLiter: parseFloat((variableCosts as any).fuel_price_per_liter || '0'),
       fuelCostPerHour: parseFloat(((parseFloat((variableCosts as any).fuel_liters_per_hour || '0') * parseFloat((variableCosts as any).fuel_price_per_liter || '0')).toFixed(2))),
       ecVariableUsd: parseFloat((variableCosts as any).ec_variable_usd || '0'),
-      ecVariableBrl: parseFloat((variableCosts as any).ec_variable_usd || '0') * parseFloat(fxRate.usd_to_brl || '0'),
+      ecVariableBrl: parseFloat((variableCosts as any).ec_variable_usd || '0') * parseFloat((fxRate as any).usd_to_brl || '0'),
       ruPerLeg: parseFloat((variableCosts as any).ru_per_leg || '0'),
       ccrPerLeg: parseFloat((variableCosts as any).ccr_per_leg || '0'),
       ruCcrPerHour: avgLegTime > 0 ? parseFloat(((parseFloat((variableCosts as any).ru_per_leg || '0') + parseFloat((variableCosts as any).ccr_per_leg || '0')) / avgLegTime).toFixed(2)) : 0,
@@ -143,7 +143,7 @@ export class CalculationService {
       fixedCostPerHour: parseFloat(fixedCostPerHour.toFixed(2)),
       variableCostPerHour: parseFloat(variableCostPerHour.toFixed(2)),
       totalBaseCostPerHour: parseFloat(totalBaseCostPerHour.toFixed(2)),
-      fxRate: parseFloat(fxRate.usd_to_brl || '0'),
+      fxRate: parseFloat((fxRate as any).usd_to_brl || '0'),
       monthlyHours: monthlyHours,
       fixedBreakdown,
       variableBreakdown,
@@ -197,7 +197,7 @@ export class CalculationService {
         origin: (route as any).origin,
         destination: (route as any).destination
       } : null,
-      fxRate: parseFloat(fxRate.usd_to_brl || '0'),
+      fxRate: parseFloat((fxRate as any).usd_to_brl || '0'),
       fixedBreakdown: baseCost.fixedBreakdown,
       variableBreakdown: baseCost.variableBreakdown,
       monthlyHours: baseCost.monthlyHours,
