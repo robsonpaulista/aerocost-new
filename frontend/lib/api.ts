@@ -128,6 +128,7 @@ export interface Flight {
   leg_time: number;
   actual_leg_time?: number | null;
   cost_calculated?: number | null;
+  passenger_name?: string | null;
   notes?: string | null;
   routes?: {
     origin: string;

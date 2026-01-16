@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Plus, Save, Trash2, Plane, CheckCircle2, Calendar } from 'lucide-react';
+import { Plus, Save, Trash2, Plane, CheckCircle2, Calendar, User } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -32,6 +32,7 @@ export default function FlightsPage() {
     leg_time: 0,
     actual_leg_time: null,
     cost_calculated: null,
+    passenger_name: null,
     notes: null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -174,6 +175,7 @@ export default function FlightsPage() {
       leg_time: flight.leg_time,
       actual_leg_time: flight.actual_leg_time || null,
       cost_calculated: flight.cost_calculated || null,
+      passenger_name: flight.passenger_name || null,
       notes: flight.notes || null,
     });
     setShowForm(true);
@@ -190,6 +192,7 @@ export default function FlightsPage() {
       leg_time: 0,
       actual_leg_time: null,
       cost_calculated: null,
+      passenger_name: null,
       notes: null,
     });
     setEditingFlight(null);
@@ -340,6 +343,14 @@ export default function FlightsPage() {
                   />
                 )}
 
+                <Input
+                  label="Passageiro Titular"
+                  placeholder="Nome do passageiro titular (sócio)"
+                  value={formData.passenger_name || ''}
+                  onChange={(e) => setFormData({ ...formData, passenger_name: e.target.value || null })}
+                  error={errors.passenger_name}
+                />
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-text mb-1">
                     Observações
@@ -379,6 +390,7 @@ export default function FlightsPage() {
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 font-semibold text-text">Data</th>
                     <th className="text-left py-3 px-4 font-semibold text-text">Rota</th>
+                    <th className="text-left py-3 px-4 font-semibold text-text">Passageiro Titular</th>
                     <th className="text-left py-3 px-4 font-semibold text-text">Tempo (h)</th>
                     <th className="text-left py-3 px-4 font-semibold text-text">Custo</th>
                     <th className="text-left py-3 px-4 font-semibold text-text">Status</th>
@@ -398,6 +410,14 @@ export default function FlightsPage() {
                         <div className="flex items-center gap-2">
                           <Plane className="w-4 h-4 text-text-light" />
                           <span className="font-medium">{flight.origin} → {flight.destination}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-text-light" />
+                          <span className={flight.passenger_name ? 'text-text' : 'text-text-light italic'}>
+                            {flight.passenger_name || 'Não informado'}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
