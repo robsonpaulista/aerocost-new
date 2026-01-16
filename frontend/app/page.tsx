@@ -10,7 +10,7 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
-  Calendar,
+  Calendar as CalendarIcon,
   Filter,
   X,
   Edit,
@@ -173,21 +173,6 @@ export default function Home() {
 
       return true;
     });
-  };
-
-  const handleEditFlight = (flight: any) => {
-    setEditingFlight(flight);
-    setFormData({
-      origin: flight.origin,
-      destination: flight.destination,
-      flight_date: flight.flight_date.split('T')[0],
-      leg_time: flight.leg_time,
-      actual_leg_time: flight.actual_leg_time || null,
-      route_id: flight.route_id || null,
-      notes: flight.notes || null,
-    });
-    setShowEditModal(true);
-    setEditErrors({});
   };
 
   const handleCloseEditModal = () => {
@@ -565,7 +550,7 @@ export default function Home() {
                                 <span className="font-semibold text-sm">{flight.origin} → {flight.destination}</span>
                               </div>
                               <div className="flex items-center gap-2 text-xs text-text-light">
-                                <Calendar className="w-3 h-3" />
+                                <CalendarIcon className="w-3 h-3" />
                                 {formatDate(flight.flight_date)}
                               </div>
                             </div>
@@ -712,7 +697,7 @@ export default function Home() {
                                 </td>
                                 <td className="py-3 px-4">
                                   <div className="flex items-center gap-2">
-                                    <Calendar className="w-4 h-4 text-text-light" />
+                                    <CalendarIcon className="w-4 h-4 text-text-light" />
                                     {formatDate(flight.flight_date)}
                                   </div>
                                 </td>
