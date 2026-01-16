@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Removido NEXT_PUBLIC_API_URL do env para permitir detecção automática
-  // O código em lib/api.ts detecta automaticamente se está no Vercel
+  // Removido NEXT_PUBLIC_API_URL - o frontend agora usa caminho relativo /api
   // Desabilitar cache em desenvolvimento
   onDemandEntries: {
     maxInactiveAge: 25 * 1000,
@@ -13,10 +12,6 @@ const nextConfig = {
     'http://192.168.3.247:3002',
     'http://localhost:3002',
   ],
-  // Configuração experimental
-  experimental: {
-    serverComponentsExternalPackages: ['firebase'],
-  },
 }
 
 module.exports = nextConfig
