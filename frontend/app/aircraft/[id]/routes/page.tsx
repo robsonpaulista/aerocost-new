@@ -38,7 +38,7 @@ export default function RoutesPage() {
       setLoadingData(true);
       const [aircraftData, routesData] = await Promise.all([
         aircraftApi.get(aircraftId),
-        routeApi.list(aircraftId).catch(() => []),
+        routeApi.list().catch(() => []),
       ]);
 
       setAircraft(aircraftData);

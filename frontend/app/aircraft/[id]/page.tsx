@@ -37,7 +37,7 @@ export default function AircraftDetailPage() {
         aircraftApi.get(aircraftId),
         fixedCostApi.get(aircraftId).catch(() => null),
         variableCostApi.get(aircraftId).catch(() => null),
-        routeApi.list(aircraftId).catch(() => []),
+        routeApi.list().catch(() => []),
       ]);
 
       setAircraft(aircraftData);

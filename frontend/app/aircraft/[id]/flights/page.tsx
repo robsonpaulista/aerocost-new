@@ -57,7 +57,7 @@ export default function FlightsPage() {
       setLoadingData(true);
       const [aircraftData, routesData, flightsData] = await Promise.all([
         aircraftApi.get(aircraftId),
-        routeApi.list(aircraftId).catch((err) => {
+        routeApi.list().catch((err) => {
           console.error('Erro ao carregar rotas:', err);
           return [];
         }),
