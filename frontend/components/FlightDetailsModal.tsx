@@ -177,9 +177,11 @@ export default function FlightDetailsModal({
                 <div className="flex items-center gap-3">
                   <DollarSign className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-sm text-gray-500">Custo Calculado</p>
+                    <p className="text-sm text-gray-500">Custo Total do Voo</p>
                     <p className="text-2xl font-bold text-text">
-                      {flight.cost_calculated
+                      {calculationDetails?.totalLegCost
+                        ? `R$ ${calculationDetails.totalLegCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : flight.cost_calculated
                         ? `R$ ${flight.cost_calculated.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                         : 'Não calculado'}
                     </p>
@@ -197,34 +199,137 @@ export default function FlightDetailsModal({
                 )}
               </div>
 
-              {/* Detalhes do Cálculo */}
+              {/* Breakdown Detalhado */}
               {calculationDetails && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Detalhes do Cálculo</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Custo Fixo Mensal</p>
-                      <p className="font-medium text-text">
-                        R$ {calculationDetails.fixedCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                      </p>
+                <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                  {/* Cálculo Resumido */}
+                  <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">CÁLCULO</p>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Custo por hora:</span>
+                        <span className="font-medium">R$ {calculationDetails.totalCostPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tempo de voo:</span>
+                        <span className="font-medium">{calculationDetails.legTime?.toFixed(2) || '0,00'}h</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-gray-200">
+                        <span className="font-semibold text-gray-900">Total:</span>
+                        <span className="font-bold text-lg text-gray-900">
+                          R$ {calculationDetails.totalLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Custo Variável por Hora</p>
-                      <p className="font-medium text-text">
-                        R$ {calculationDetails.variableCostPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                      </p>
+                  </div>
+
+                  {/* Custos Fixos */}
+                  {calculationDetails.fixedBreakdown && (
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      <p className="text-xs font-semibold text-blue-700 mb-2">CUSTOS FIXOS (por hora: R$ {calculationDetails.fixedCostPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'})</p>
+                      <div className="space-y-1.5 text-xs">
+                        {calculationDetails.fixedBreakdown.crewPerHour > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Tripulação:</span>
+                            <span className="font-medium">R$ {calculationDetails.fixedBreakdown.crewPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                        {calculationDetails.fixedBreakdown.hangarPerHour > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Hangar:</span>
+                            <span className="font-medium">R$ {calculationDetails.fixedBreakdown.hangarPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                        {calculationDetails.fixedBreakdown.ecFixedPerHour > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">EC Fixo:</span>
+                            <span className="font-medium">R$ {calculationDetails.fixedBreakdown.ecFixedPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                        {calculationDetails.fixedBreakdown.insurancePerHour > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Seguro:</span>
+                            <span className="font-medium">R$ {calculationDetails.fixedBreakdown.insurancePerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                        {calculationDetails.fixedBreakdown.administrationPerHour > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Administração:</span>
+                            <span className="font-medium">R$ {calculationDetails.fixedBreakdown.administrationPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between pt-1 border-t border-blue-200 mt-1">
+                          <span className="font-semibold text-blue-700">Total Fixos ({calculationDetails.legTime?.toFixed(2) || '0,00'}h):</span>
+                          <span className="font-bold text-blue-700">
+                            R$ {calculationDetails.fixedLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Custo Total do Voo</p>
-                      <p className="font-medium text-text">
+                  )}
+
+                  {/* Custos Variáveis */}
+                  {calculationDetails.variableBreakdown && (() => {
+                    const legTime = calculationDetails.legTime || 0;
+                    const fuelTotal = (calculationDetails.variableBreakdown.fuelCostPerHour || 0) * legTime;
+                    const ecVariableTotal = (calculationDetails.variableBreakdown.ecVariableBrl || 0) * legTime;
+                    const ruCcrTotal = (calculationDetails.variableBreakdown.ruCcrPerHour || 0) * legTime;
+                    
+                    return (
+                      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                        <p className="text-xs font-semibold text-green-700 mb-2">CUSTOS VARIÁVEIS (por hora: R$ {calculationDetails.variableCostPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'})</p>
+                        <div className="space-y-1.5 text-xs">
+                          {calculationDetails.variableBreakdown.fuelCostPerHour > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">
+                                Combustível ({calculationDetails.variableBreakdown.fuelLitersPerHour?.toFixed(1) || '0'}L/h × R$ {calculationDetails.variableBreakdown.fuelPricePerLiter?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}):
+                              </span>
+                              <span className="font-medium">R$ {calculationDetails.variableBreakdown.fuelCostPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/h</span>
+                            </div>
+                          )}
+                          {calculationDetails.variableBreakdown.ecVariableBrl > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">EC Variável:</span>
+                              <span className="font-medium">R$ {calculationDetails.variableBreakdown.ecVariableBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/h</span>
+                            </div>
+                          )}
+                          {calculationDetails.variableBreakdown.ruCcrPerHour > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">RU + CCR:</span>
+                              <span className="font-medium">R$ {calculationDetails.variableBreakdown.ruCcrPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/h</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between pt-1 border-t border-green-200 mt-1">
+                            <span className="font-semibold text-green-700">Total Variáveis ({legTime.toFixed(2)}h):</span>
+                            <span className="font-bold text-green-700">
+                              R$ {calculationDetails.variableLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* DECEA */}
+                  {calculationDetails.deceaLegCost > 0 && (
+                    <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                      <p className="text-xs font-semibold text-purple-700 mb-2">DECEA</p>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-600">Taxa DECEA ({calculationDetails.deceaPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}/h × {calculationDetails.legTime?.toFixed(2) || '0,00'}h):</span>
+                        <span className="font-bold text-purple-700">
+                          R$ {calculationDetails.deceaLegCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Resumo Final */}
+                  <div className="bg-gray-100 rounded-lg p-3 border-2 border-gray-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-gray-900">TOTAL DO VOO:</span>
+                      <span className="text-xl font-bold text-gray-900">
                         R$ {calculationDetails.totalLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Tempo de Voo</p>
-                      <p className="font-medium text-text">
-                        {calculationDetails.legTime?.toFixed(2) || '0,00'}h
-                      </p>
+                      </span>
                     </div>
                   </div>
                 </div>
