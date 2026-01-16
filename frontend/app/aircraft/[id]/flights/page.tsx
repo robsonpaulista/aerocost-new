@@ -213,7 +213,7 @@ export default function FlightsPage() {
   }
 
   return (
-    <AppLayout selectedAircraftId={aircraftId}>
+    <AppLayout>
       <Card title={`Voos - ${aircraft?.name || ''}`} className="mb-6 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div className="flex flex-wrap gap-2">

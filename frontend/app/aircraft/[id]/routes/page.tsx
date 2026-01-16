@@ -121,7 +121,7 @@ export default function RoutesPage() {
   }
 
   return (
-    <AppLayout selectedAircraftId={aircraftId}>
+    <AppLayout>
         <div className="mb-6 flex justify-end">
           <Button
             onClick={() => {

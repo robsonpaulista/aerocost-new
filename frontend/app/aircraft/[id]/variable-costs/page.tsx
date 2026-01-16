@@ -89,7 +89,7 @@ export default function VariableCostsPage() {
   }
 
   return (
-    <AppLayout selectedAircraftId={aircraftId}>
+    <AppLayout>
       <Card className="shadow-sm">
           <p className="text-sm text-text-light mb-6">
             Custos que variam com o número de horas de voo ou número de pernas.
