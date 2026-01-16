@@ -18,7 +18,6 @@ export default function VariableCostsPage() {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [aircraft, setAircraft] = useState<Aircraft | null>(null);
-  const [existingVariableCostId, setExistingVariableCostId] = useState<string | null>(null);
   const [formData, setFormData] = useState<VariableCost>({
     aircraft_id: aircraftId,
     fuel_liters_per_hour: 0,
@@ -32,7 +31,6 @@ export default function VariableCostsPage() {
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aircraftId]);
 
   const loadData = async () => {
@@ -45,13 +43,10 @@ export default function VariableCostsPage() {
 
       setAircraft(aircraftData);
       if (variableCostData) {
-        // Salvar o ID do registro existente
-        setExistingVariableCostId(variableCostData.id || null);
         setFormData(variableCostData);
-      } else {
-        setExistingVariableCostId(null);
       }
     } catch (error: any) {
+      console.error('Erro ao carregar dados:', error);
       if (error.response?.status === 404) {
         router.push('/');
       }
@@ -66,34 +61,7 @@ export default function VariableCostsPage() {
     setErrors({});
 
     try {
-      const dataToSend = {
-        aircraft_id: aircraftId,
-        fuel_liters_per_hour: formData.fuel_liters_per_hour || 0,
-        fuel_consumption_km_per_l: formData.fuel_consumption_km_per_l || 0,
-        fuel_price_per_liter: formData.fuel_price_per_liter || 0,
-        ec_variable_usd: formData.ec_variable_usd || 0,
-        ru_per_leg: formData.ru_per_leg || 0,
-        ccr_per_leg: formData.ccr_per_leg || 0,
-      };
-      
-      // Se já existe registro, usar update; senão, usar upsert (create)
-      let savedData;
-      if (existingVariableCostId) {
-        savedData = await variableCostApi.update(existingVariableCostId, dataToSend);
-      } else {
-        savedData = await variableCostApi.upsert(dataToSend);
-        // Se era novo registro, atualizar o ID
-        if (savedData?.id) {
-          setExistingVariableCostId(savedData.id);
-        }
-      }
-      
-      // Atualizar o formData com os dados salvos (garantir sincronização)
-      if (savedData) {
-        setFormData(savedData);
-      }
-      
-      alert('Custos variáveis salvos com sucesso!');
+      await variableCostApi.upsert(formData);
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
       if (error.response?.data?.details) {
@@ -121,7 +89,7 @@ export default function VariableCostsPage() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout selectedAircraftId={aircraftId}>
       <Card className="shadow-sm">
           <p className="text-sm text-text-light mb-6">
             Custos que variam com o número de horas de voo ou número de pernas.

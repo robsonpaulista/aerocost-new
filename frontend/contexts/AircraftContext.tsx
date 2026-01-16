@@ -14,10 +14,6 @@ interface AircraftContextType {
 
 const AircraftContext = createContext<AircraftContextType | undefined>(undefined);
 
-// Cache simples para evitar recarregamentos desnecessários
-let aircraftsCache: { data: Aircraft[]; timestamp: number } | null = null;
-const CACHE_DURATION = 30000; // 30 segundos
-
 export function AircraftProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -25,7 +21,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
   const [selectedAircraftId, setSelectedAircraftIdState] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
-  // Carrega aeronaves com cache
+  // Carrega aeronaves
   useEffect(() => {
     loadAircrafts();
   }, []);
@@ -41,22 +37,10 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
     }
   }, [pathname, aircrafts.length]);
 
-  const loadAircrafts = async (forceRefresh = false) => {
+  const loadAircrafts = async () => {
     try {
-      // Verificar cache
-      const now = Date.now();
-      if (!forceRefresh && aircraftsCache && (now - aircraftsCache.timestamp) < CACHE_DURATION) {
-        setAircrafts(aircraftsCache.data);
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
       const data = await aircraftApi.list();
-      
-      // Atualizar cache
-      aircraftsCache = { data, timestamp: now };
-      
       setAircrafts(data);
       
       // Se não há aeronave selecionada e há aeronaves disponíveis, seleciona a primeira
@@ -69,8 +53,7 @@ export function AircraftProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      // Em caso de erro, limpar cache
-      aircraftsCache = null;
+      console.error('Erro ao carregar aeronaves:', error);
     } finally {
       setLoading(false);
     }

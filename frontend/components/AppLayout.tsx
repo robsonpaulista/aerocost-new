@@ -20,13 +20,11 @@ import {
   ChevronRight,
   FileText,
   BarChart3,
-  LogOut,
-  Users
+  LogOut
 } from 'lucide-react';
 import { useAircraft } from '@/contexts/AircraftContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Select } from '@/components/ui/Select';
-import { Button } from '@/components/ui/Button';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -36,22 +34,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
-    aeronave: true,
-    custos: true,
-    administracao: false,
-    relatorios: false,
-  });
   const { aircrafts, selectedAircraftId, setSelectedAircraftId } = useAircraft();
   const { user, logout } = useAuth();
-
-  const toggleMenu = (menuKey: string) => {
-    setOpenMenus(prev => ({
-      ...prev,
-      [menuKey]: !prev[menuKey]
-    }));
-  };
 
   // Determina o aircraftId atual baseado na URL ou contexto
   const currentAircraftId = selectedAircraftId || 
@@ -66,9 +50,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header com Gradiente Azul */}
-      <header className="bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md z-50 flex-shrink-0">
+      <header className="bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md sticky top-0 z-50">
         <div className="px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             {/* Logo e Menu Mobile */}
@@ -80,22 +64,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
               >
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    // No desktop, toggle sidebar expand/collapse
-                    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-                      setSidebarExpanded(!sidebarExpanded);
-                    } else {
-                      router.push('/');
-                    }
-                  }}
-                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                >
-                  <Plane className="w-6 h-6 animate-plane-fly" />
-                  <h1 className="text-xl sm:text-2xl font-bold">AeroCost</h1>
-                </button>
-              </div>
+              <button
+                onClick={() => router.push('/')}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
+                <Plane className="w-6 h-6 animate-plane-fly" />
+                <h1 className="text-xl sm:text-2xl font-bold">AeroCost</h1>
+              </button>
             </div>
 
             {/* Ações do Header */}
@@ -123,332 +98,241 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Sidebar */}
         <aside
           className={`
-            fixed lg:static left-0 z-40
-            ${sidebarExpanded ? 'w-64' : 'w-16'} bg-white shadow-lg lg:shadow-none
-            transform transition-all duration-300 ease-in-out
+            fixed lg:static inset-y-0 left-0 z-40
+            w-64 bg-white shadow-lg lg:shadow-none
+            transform transition-transform duration-300 ease-in-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             pt-16 lg:pt-0
-            h-full
           `}
         >
-          <div className={`h-full flex flex-col ${sidebarExpanded ? 'px-4 py-4' : 'px-2 py-4'}`}>
-            {/* Menu Principal - com scroll */}
-            <nav className="flex-1 overflow-y-auto space-y-1">
-              {/* Dashboard */}
-              <button
-                onClick={() => {
-                  router.push('/');
-                  setSidebarOpen(false);
-                }}
-                className={`w-full flex items-center ${sidebarExpanded ? 'justify-start' : 'justify-center'} py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors relative group ${
-                  isActive('/') ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
-                }`}
-                title="Dashboard"
-              >
-                <div className="flex items-center gap-3">
-                  <HomeIcon className="w-5 h-5" />
-                  {sidebarExpanded && <span>Dashboard</span>}
+          <div className="h-full overflow-y-auto px-4 py-6">
+            {/* Perfil do Usuário */}
+            <div className="mb-6 pb-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <User className="w-6 h-6 text-blue-600" />
                 </div>
-                {!sidebarExpanded && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
-                    Dashboard
-                  </div>
-                )}
-              </button>
-
-              {/* Menu Aeronave */}
-              {sidebarExpanded ? (
-                <div className="space-y-1">
-                  <button
-                    onClick={() => toggleMenu('aeronave')}
-                    className="w-full flex items-center justify-between py-2.5 px-3 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Plane className="w-5 h-5" />
-                      <span>Aeronave</span>
-                    </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${openMenus.aeronave ? '' : '-rotate-90'}`} />
-                  </button>
-                  {openMenus.aeronave && (
-                    <div className="ml-8 space-y-1">
-                      <button
-                        onClick={() => {
-                          if (currentAircraftId) {
-                            router.push(`/aircraft/${currentAircraftId}`);
-                          } else if (aircrafts.length > 0) {
-                            router.push(`/aircraft/${aircrafts[0].id}`);
-                          } else {
-                            router.push('/aircraft/new');
-                          }
-                          setSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors ${
-                          isActive('/aircraft/') && !pathname?.includes('/flights') && !pathname?.includes('/fixed-costs') && !pathname?.includes('/variable-costs')
-                            ? 'bg-blue-50 text-blue-700 font-medium' 
-                            : 'text-gray-600'
-                        }`}
-                      >
-                        <Plane className="w-4 h-4" />
-                        <span>Aeronaves</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          router.push('/routes');
-                          setSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors ${
-                          isActive('/routes') ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600'
-                        }`}
-                      >
-                        <Route className="w-4 h-4" />
-                        <span>Rotas</span>
-                      </button>
-                      {currentAircraftId && (
-                        <button
-                          onClick={() => {
-                            router.push(`/aircraft/${currentAircraftId}/flights`);
-                            setSidebarOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors ${
-                            isActive(`/aircraft/${currentAircraftId}/flights`) ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600'
-                          }`}
-                        >
-                          <Calendar className="w-4 h-4" />
-                          <span>Voos</span>
-                        </button>
-                      )}
-                    </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {user?.name || 'Usuário'}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {user?.email || 'Carregando...'}
+                  </p>
+                  {user?.role && (
+                    <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${
+                      user.role === 'admin' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                    </span>
                   )}
                 </div>
-              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Menu Principal */}
+            <nav className="space-y-1">
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+                  Principal
+                </p>
                 <button
                   onClick={() => {
-                    if (currentAircraftId) {
-                      router.push(`/aircraft/${currentAircraftId}`);
-                    } else if (aircrafts.length > 0) {
-                      router.push(`/aircraft/${aircrafts[0].id}`);
-                    } else {
-                      router.push('/aircraft/new');
-                    }
+                    router.push('/');
                     setSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center justify-center py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors relative group ${
-                    isActive('/aircraft/') ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                  className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                    isActive('/') ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
                   }`}
-                  title="Aeronave"
                 >
-                  <Plane className="w-5 h-5" />
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
-                    Aeronave
+                  <div className="flex items-center gap-3">
+                    <HomeIcon className="w-5 h-5" />
+                    <span>Dashboard</span>
                   </div>
                 </button>
-              )}
-
-              {/* Menu Custos */}
-              {sidebarExpanded ? (
-                <div className="space-y-1">
-                  <button
-                    onClick={() => toggleMenu('custos')}
-                    className="w-full flex items-center justify-between py-2.5 px-3 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <DollarSign className="w-5 h-5" />
-                      <span>Custos</span>
-                    </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${openMenus.custos ? '' : '-rotate-90'}`} />
-                  </button>
-                  {openMenus.custos && (
-                    <div className="ml-8 space-y-1">
-                      {currentAircraftId && (
-                        <>
-                          <button
-                            onClick={() => {
-                              router.push(`/aircraft/${currentAircraftId}/fixed-costs`);
-                              setSidebarOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors ${
-                              isActive(`/aircraft/${currentAircraftId}/fixed-costs`) ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600'
-                            }`}
-                          >
-                            <DollarSign className="w-4 h-4" />
-                            <span>Custos Fixos</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              router.push(`/aircraft/${currentAircraftId}/variable-costs`);
-                              setSidebarOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors ${
-                              isActive(`/aircraft/${currentAircraftId}/variable-costs`) ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600'
-                            }`}
-                          >
-                            <TrendingUp className="w-4 h-4" />
-                            <span>Custos Variáveis</span>
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => {
-                          router.push('/fx-rates');
-                          setSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors ${
-                          isActive('/fx-rates') ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600'
-                        }`}
-                      >
-                        <Wallet className="w-4 h-4" />
-                        <span>Taxa de Câmbio</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (currentAircraftId) {
-                      router.push(`/aircraft/${currentAircraftId}/fixed-costs`);
-                    } else {
-                      router.push('/fx-rates');
-                    }
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-center py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors relative group ${
-                    isActive('/fixed-costs') || isActive('/variable-costs') || isActive('/fx-rates') ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                  }`}
-                  title="Custos"
-                >
-                  <DollarSign className="w-5 h-5" />
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
-                    Custos
-                  </div>
-                </button>
-              )}
-
-              {/* Menu Administração */}
-              {user?.role === 'admin' && (
-                sidebarExpanded ? (
-                  <div className="space-y-1">
-                    <button
-                      onClick={() => toggleMenu('administracao')}
-                      className="w-full flex items-center justify-between py-2.5 px-3 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Settings className="w-5 h-5" />
-                        <span>Administração</span>
-                      </div>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${openMenus.administracao ? '' : '-rotate-90'}`} />
-                    </button>
-                    {openMenus.administracao && (
-                      <div className="ml-8 space-y-1">
-                        <button
-                          onClick={() => {
-                            router.push('/users');
-                            setSidebarOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors ${
-                            isActive('/users') ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600'
-                          }`}
-                        >
-                          <Users className="w-4 h-4" />
-                          <span>Usuários</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
+                {/* Gerenciar Usuários - Apenas para admins */}
+                {user?.role === 'admin' && (
                   <button
                     onClick={() => {
                       router.push('/users');
                       setSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center justify-center py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors relative group ${
-                      isActive('/users') ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                    className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                      isActive('/users') ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
                     }`}
-                    title="Administração"
-                  >
-                    <Settings className="w-5 h-5" />
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
-                      Administração
-                    </div>
-                  </button>
-                )
-              )}
-
-              {/* Menu Relatórios */}
-              {sidebarExpanded ? (
-                <div className="space-y-1">
-                  <button
-                    onClick={() => toggleMenu('relatorios')}
-                    className="w-full flex items-center justify-between py-2.5 px-3 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <BarChart3 className="w-5 h-5" />
-                      <span>Relatórios</span>
+                      <User className="w-5 h-5" />
+                      <span>Gerenciar Usuários</span>
                     </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${openMenus.relatorios ? '' : '-rotate-90'}`} />
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
                   </button>
-                  {openMenus.relatorios && (
-                    <div className="ml-8 space-y-1">
-                      <button
-                        className="w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
-                      >
-                        <BarChart3 className="w-4 h-4" />
-                        <span>Análises</span>
-                      </button>
-                      <button
-                        className="w-full flex items-center justify-start gap-2 py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
-                      >
-                        <FileText className="w-4 h-4" />
-                        <span>Relatórios</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <button
-                  className="w-full flex items-center justify-center py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors relative group text-gray-700"
-                  title="Relatórios"
-                >
-                  <BarChart3 className="w-5 h-5" />
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
-                    Relatórios
-                  </div>
-                </button>
-              )}
-            </nav>
+                )}
+              </div>
 
-            {/* Perfil do Usuário no final */}
-            <div className={`mt-4 pt-4 border-t border-gray-200 ${sidebarExpanded ? '' : 'flex justify-center'}`}>
-              {sidebarExpanded ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <User className="w-6 h-6 text-blue-600" />
+              {/* Aeronave */}
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+                  Aeronave
+                </p>
+                {/* Nova Aeronave */}
+                <button
+                  onClick={() => {
+                    router.push('/aircraft/new');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                    isActive('/aircraft/new') ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Plus className="w-5 h-5" />
+                    <span>Nova Aeronave</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {user?.name || 'Usuário'}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {user?.email || 'Carregando...'}
-                    </p>
-                    {user?.role && (
-                      <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${
-                        user.role === 'admin' 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {user.role === 'admin' ? 'Administrador' : 'Usuário'}
-                      </span>
-                    )}
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+                {/* Rotas */}
+                {currentAircraftId && (
+                  <button
+                    onClick={() => {
+                      router.push(`/aircraft/${currentAircraftId}/routes`);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                      isActive(`/aircraft/${currentAircraftId}/routes`) ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Route className="w-5 h-5" />
+                      <span>Rotas</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
+                {/* Voos */}
+                {currentAircraftId && (
+                  <button
+                    onClick={() => {
+                      router.push(`/aircraft/${currentAircraftId}/flights`);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                      isActive(`/aircraft/${currentAircraftId}/flights`) ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5" />
+                      <span>Voos</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
+                {/* Detalhes Aeronave */}
+                {currentAircraftId && (
+                  <button
+                    onClick={() => {
+                      router.push(`/aircraft/${currentAircraftId}`);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                      pathname === `/aircraft/${currentAircraftId}` ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Settings className="w-5 h-5" />
+                      <span>Detalhes Aeronave</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
+              </div>
+
+              {/* Custos */}
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+                  Custos
+                </p>
+                {/* Custos Fixos */}
+                {currentAircraftId && (
+                  <button
+                    onClick={() => {
+                      router.push(`/aircraft/${currentAircraftId}/fixed-costs`);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                      isActive(`/aircraft/${currentAircraftId}/fixed-costs`) ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <DollarSign className="w-5 h-5" />
+                      <span>Custos Fixos</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
+                {/* Custos Variáveis */}
+                {currentAircraftId && (
+                  <button
+                    onClick={() => {
+                      router.push(`/aircraft/${currentAircraftId}/variable-costs`);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                      isActive(`/aircraft/${currentAircraftId}/variable-costs`) ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <TrendingUp className="w-5 h-5" />
+                      <span>Custos Variáveis</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
+                {/* Taxa de Câmbio */}
+                <button
+                  onClick={() => {
+                    router.push('/fx-rates');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                    isActive('/fx-rates') ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Wallet className="w-5 h-5" />
+                    <span>Taxa de Câmbio</span>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                </div>
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <User className="w-6 h-6 text-blue-600" />
-                </div>
-              )}
-            </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+                  Relatórios
+                </p>
+                <button
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <BarChart3 className="w-5 h-5" />
+                    <span>Análises</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+                <button
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5" />
+                    <span>Relatórios</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+            </nav>
           </div>
         </aside>
 
@@ -461,51 +345,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-100 min-w-0 h-full">
+        <main className="flex-1 overflow-y-auto bg-gray-100 min-w-0">
           <div className="p-4 sm:p-6 lg:p-8">
-            {/* Botão Nova Aeronave e Seletor de Aeronave */}
-            {pathname !== '/fx-rates' && 
-             pathname !== '/routes' && 
-             pathname !== '/users' &&
-             !pathname?.includes('/routes') && (
+            {/* Seletor de Aeronave - aparece em todas as páginas exceto /aircraft/new (página de cadastro) e /fx-rates */}
+            {pathname !== '/aircraft/new' && pathname !== '/fx-rates' && aircrafts.length > 0 && (
               <div className="mb-6">
-                {/* Botão Nova Aeronave e Seletor de Aeronave lado a lado */}
-                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end justify-between">
-                  {/* Seletor de Aeronave */}
-                  {aircrafts.length > 0 && (
-                    <div className="flex-1 w-full sm:w-auto">
-                      <Select
-                        label="Selecionar Aeronave"
-                        value={selectedAircraftId || ''}
-                        onChange={(e) => {
-                          const newAircraftId = e.target.value;
-                          if (newAircraftId) {
-                            router.push(`/aircraft/${newAircraftId}`);
-                          }
-                        }}
-                        options={[
-                          { value: '', label: 'Selecione uma aeronave...' },
-                          ...aircrafts.map((ac) => ({
-                            value: ac.id,
-                            label: `${ac.name} (${ac.registration})`,
-                          })),
-                        ]}
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Botão Nova Aeronave - aparece apenas quando estiver em uma página de aeronave */}
-                  {pathname?.includes('/aircraft/') && pathname !== '/aircraft/new' && (
-                    <Button
-                      variant="outline"
-                      onClick={() => router.push('/aircraft/new')}
-                      icon={<Plus className="w-4 h-4" />}
-                      className="w-full sm:w-auto"
-                    >
-                      Nova Aeronave
-                    </Button>
-                  )}
-                </div>
+                <Select
+                  label="Selecionar Aeronave"
+                  value={selectedAircraftId || ''}
+                  onChange={(e) => {
+                    const newAircraftId = e.target.value;
+                    setSelectedAircraftId(newAircraftId);
+                  }}
+                  options={[
+                    { value: '', label: 'Selecione uma aeronave...' },
+                    ...aircrafts.map((ac) => ({
+                      value: ac.id,
+                      label: `${ac.name} (${ac.registration})`,
+                    })),
+                  ]}
+                />
               </div>
             )}
             {children}

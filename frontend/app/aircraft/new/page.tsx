@@ -1,13 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Save,
-  Plane,
-  Edit,
-  Trash2,
-} from 'lucide-react';
+import { Save, Plane, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -17,9 +12,10 @@ import { aircraftApi } from '@/lib/api';
 
 export default function NewAircraftPage() {
   const router = useRouter();
-  const { aircrafts, loading: contextLoading } = useAircraft();
-  const [saving, setSaving] = useState(false);
+  const { aircrafts } = useAircraft();
+  const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [formExpanded, setFormExpanded] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     registration: '',
@@ -31,19 +27,18 @@ export default function NewAircraftPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
+    setLoading(true);
     setErrors({});
 
     try {
-      const newAircraft = await aircraftApi.create({
+      await aircraftApi.create({
         name: formData.name,
         registration: formData.registration,
         model: formData.model,
         monthly_hours: parseFloat(formData.monthly_hours),
         avg_leg_time: parseFloat(formData.avg_leg_time),
       });
-      alert('Aeronave criada com sucesso!');
-      // Limpa o formulário
+      // Limpa o formulário após sucesso
       setFormData({
         name: '',
         registration: '',
@@ -51,8 +46,8 @@ export default function NewAircraftPage() {
         monthly_hours: '',
         avg_leg_time: '',
       });
-      // Redireciona para a página de detalhes
-      router.push(`/aircraft/${newAircraft.id}`);
+      // Recarrega a página para atualizar a lista
+      window.location.reload();
     } catch (error: any) {
       if (error.response?.data?.details) {
         const validationErrors: Record<string, string> = {};
@@ -64,7 +59,7 @@ export default function NewAircraftPage() {
         setErrors({ general: error.response?.data?.error || 'Erro ao cadastrar aeronave' });
       }
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -76,7 +71,6 @@ export default function NewAircraftPage() {
     setDeletingId(id);
     try {
       await aircraftApi.delete(id);
-      alert('Aeronave excluída com sucesso!');
       window.location.reload();
     } catch (error: any) {
       alert('Erro ao excluir aeronave: ' + (error.response?.data?.error || error.message));
@@ -85,46 +79,36 @@ export default function NewAircraftPage() {
     }
   };
 
-  if (contextLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center py-12">
-          <p className="text-text-light">Carregando...</p>
-        </div>
-      </AppLayout>
-    );
-  }
-
   return (
     <AppLayout>
       <div className="grid grid-cols-1 gap-6">
         {/* Lista de Aeronaves Cadastradas */}
         <Card className="shadow-sm">
           <h3 className="text-base font-semibold text-text mb-4">Aeronaves Cadastradas</h3>
-          {!aircrafts || aircrafts.length === 0 ? (
+          {aircrafts.length === 0 ? (
             <div className="text-center py-12 text-text-light">
               <Plane className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p className="text-sm">Nenhuma aeronave cadastrada ainda.</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {aircrafts.map((ac) => (
+              {aircrafts.map((aircraft) => (
                 <div
-                  key={ac.id}
+                  key={aircraft.id}
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Plane className="w-4 h-4 text-primary flex-shrink-0" />
                       <h4 className="text-sm font-semibold text-text truncate">
-                        {ac.name}
+                        {aircraft.name}
                       </h4>
                     </div>
                     <div className="text-xs text-text-light space-y-1">
-                      <p>Matrícula: {ac.registration}</p>
-                      <p>Modelo: {ac.model}</p>
+                      <p>Matrícula: {aircraft.registration}</p>
+                      <p>Modelo: {aircraft.model}</p>
                       <p>
-                        {ac.monthly_hours}h/mês • {ac.avg_leg_time}h por perna
+                        {aircraft.monthly_hours}h/mês • {aircraft.avg_leg_time}h por perna
                       </p>
                     </div>
                   </div>
@@ -132,7 +116,7 @@ export default function NewAircraftPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => router.push(`/aircraft/${ac.id}`)}
+                      onClick={() => router.push(`/aircraft/${aircraft.id}`)}
                       className="text-gray-600 hover:text-primary hover:bg-gray-50"
                     >
                       Ver
@@ -140,7 +124,7 @@ export default function NewAircraftPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => router.push(`/aircraft/${ac.id}`)}
+                      onClick={() => router.push(`/aircraft/${aircraft.id}/edit`)}
                       className="text-gray-600 hover:text-primary hover:bg-gray-50"
                       icon={<Edit className="w-4 h-4" />}
                     >
@@ -149,12 +133,12 @@ export default function NewAircraftPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(ac.id)}
-                      disabled={deletingId === ac.id}
+                      onClick={() => handleDelete(aircraft.id)}
+                      disabled={deletingId === aircraft.id}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       icon={<Trash2 className="w-4 h-4" />}
                     >
-                      {deletingId === ac.id ? 'Excluindo...' : 'Excluir'}
+                      {deletingId === aircraft.id ? 'Excluindo...' : 'Excluir'}
                     </Button>
                   </div>
                 </div>
@@ -163,15 +147,25 @@ export default function NewAircraftPage() {
           )}
         </Card>
 
-        {/* Formulário de Cadastro */}
+        {/* Formulário de Cadastro - Colapsável */}
         <Card className="shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setFormExpanded(!formExpanded)}
+            className="w-full flex items-center justify-between mb-4"
+          >
             <h3 className="text-base font-semibold text-text">Nova Aeronave</h3>
-          </div>
+            {formExpanded ? (
+              <ChevronUp className="w-5 h-5 text-text-light" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-text-light" />
+            )}
+          </button>
           
-          <p className="text-sm text-text-light mb-6">
-            Informações essenciais para compor a base de cálculos da operação.
-          </p>
+          {formExpanded && (
+            <>
+              <p className="text-sm text-text-light mb-6">
+                Informações essenciais para compor a base de cálculos da operação.
+              </p>
 
           {errors.general && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
@@ -234,13 +228,16 @@ export default function NewAircraftPage() {
             </div>
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="submit" loading={saving} icon={<Save className="w-4 h-4" />}>
+              <Button type="submit" loading={loading} icon={<Save className="w-4 h-4" />}>
                 Salvar Aeronave
               </Button>
             </div>
           </form>
+            </>
+          )}
         </Card>
       </div>
     </AppLayout>
   );
 }
+

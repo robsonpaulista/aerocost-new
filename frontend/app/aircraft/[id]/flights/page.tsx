@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Plus, Save, Trash2, Plane, CheckCircle2, Calendar, ChevronDown, ChevronRight, DollarSign } from 'lucide-react';
+import { Plus, Save, Trash2, Plane, CheckCircle2, Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { BoardingPass } from '@/components/ui/BoardingPass';
 import AppLayout from '@/components/AppLayout';
-import { flightApi, routeApi, aircraftApi, calculationApi } from '@/lib/api';
+import { flightApi, routeApi, aircraftApi } from '@/lib/api';
 import type { Flight, Route, Aircraft } from '@/lib/api';
 
 export default function FlightsPage() {
@@ -37,15 +36,9 @@ export default function FlightsPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [filterType, setFilterType] = useState<'all' | 'planned' | 'completed'>('all');
-  const [expandedFlights, setExpandedFlights] = useState<Set<string>>(new Set());
-  const [flightCostDetails, setFlightCostDetails] = useState<Record<string, any>>({});
-  const [loadingCostDetails, setLoadingCostDetails] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (aircraftId) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadData();
   }, [aircraftId]);
 
   // Função para formatar data corretamente (evita problema de timezone)
@@ -62,20 +55,27 @@ export default function FlightsPage() {
   const loadData = async () => {
     try {
       setLoadingData(true);
-      
       const [aircraftData, routesData, flightsData] = await Promise.all([
         aircraftApi.get(aircraftId),
-        routeApi.list().catch(() => []),
-        flightApi.list(aircraftId).catch(() => []),
+        routeApi.list(aircraftId).catch((err) => {
+          console.error('Erro ao carregar rotas:', err);
+          return [];
+        }),
+        flightApi.list(aircraftId).catch((err) => {
+          console.error('Erro ao carregar voos:', err);
+          return [];
+        }),
       ]);
-      
+
+      console.log('Rotas carregadas:', routesData);
+      console.log('Número de rotas:', routesData?.length || 0);
       setAircraft(aircraftData);
       const routesArray = Array.isArray(routesData) ? routesData : [];
+      console.log('Rotas processadas:', routesArray);
       setRoutes(routesArray);
-      
-      const flightsArray = Array.isArray(flightsData) ? flightsData : [];
-      setFlights(flightsArray);
+      setFlights(Array.isArray(flightsData) ? flightsData : []);
     } catch (error: any) {
+      console.error('Erro ao carregar dados:', error);
       if (error.response?.status === 404) {
         router.push('/');
       }
@@ -113,11 +113,10 @@ export default function FlightsPage() {
         await flightApi.create(formData);
       }
 
-      // Recarregar dados após salvar
       await loadData();
       resetForm();
-      alert(editingFlight ? 'Voo atualizado com sucesso!' : 'Voo criado com sucesso!');
     } catch (error: any) {
+      console.error('Erro ao salvar voo:', error);
       if (error.response?.data?.details) {
         const fieldErrors: Record<string, string> = {};
         error.response.data.details.forEach((detail: any) => {
@@ -139,6 +138,7 @@ export default function FlightsPage() {
       await flightApi.delete(id);
       await loadData();
     } catch (error: any) {
+      console.error('Erro ao excluir voo:', error);
       alert('Erro ao excluir voo: ' + (error.response?.data?.error || error.message));
     }
   };
@@ -157,6 +157,7 @@ export default function FlightsPage() {
       await flightApi.markAsCompleted(flight.id!, actualLegTime);
       await loadData();
     } catch (error: any) {
+      console.error('Erro ao marcar voo como completado:', error);
       alert('Erro ao marcar voo como completado: ' + (error.response?.data?.error || error.message));
     }
   };
@@ -201,58 +202,6 @@ export default function FlightsPage() {
     return flight.flight_type === filterType;
   });
 
-  const toggleFlightExpansion = async (flightId: string) => {
-    const isExpanded = expandedFlights.has(flightId);
-    
-    if (isExpanded) {
-      // Fechar
-      const newExpanded = new Set(expandedFlights);
-      newExpanded.delete(flightId);
-      setExpandedFlights(newExpanded);
-    } else {
-      // Abrir - carregar detalhes do custo
-      const newExpanded = new Set(expandedFlights);
-      newExpanded.add(flightId);
-      setExpandedFlights(newExpanded);
-      
-      // Se ainda não carregou os detalhes, carregar agora
-      if (!flightCostDetails[flightId]) {
-        setLoadingCostDetails(prev => new Set(prev).add(flightId));
-        try {
-          const flight = flights.find(f => f.id === flightId);
-          if (flight) {
-            const legTime = (flight.flight_type === 'completed' && flight.actual_leg_time) 
-              ? flight.actual_leg_time 
-              : (flight.leg_time || undefined);
-            
-            const details = await calculationApi.legCost(
-              flight.aircraft_id,
-              legTime,
-              flight.route_id || undefined
-            );
-            
-            setFlightCostDetails(prev => ({
-              ...prev,
-              [flightId]: details
-            }));
-          }
-        } catch (error: any) {
-          // Em caso de erro, ainda assim marcar como carregado para não ficar tentando
-          setFlightCostDetails(prev => ({
-            ...prev,
-            [flightId]: null
-          }));
-        } finally {
-          setLoadingCostDetails(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(flightId);
-            return newSet;
-          });
-        }
-      }
-    }
-  };
-
   if (loadingData) {
     return (
       <AppLayout>
@@ -264,7 +213,7 @@ export default function FlightsPage() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout selectedAircraftId={aircraftId}>
       <Card title={`Voos - ${aircraft?.name || ''}`} className="mb-6 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div className="flex flex-wrap gap-2">
@@ -424,253 +373,95 @@ export default function FlightsPage() {
               Nenhum voo {filterType === 'all' ? '' : filterType === 'planned' ? 'previsto' : 'realizado'} encontrado.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredFlights.map((flight) => {
-                const isExpanded = expandedFlights.has(flight.id!);
-                const details = flightCostDetails[flight.id!];
-                const isLoadingDetails = loadingCostDetails.has(flight.id!);
-                
-                return (
-                  <div key={flight.id} className="space-y-4">
-                    <BoardingPass
-                      flight={flight}
-                      aircraftName={aircraft?.name}
-                      formatDate={formatDate}
-                      onEdit={() => handleEdit(flight)}
-                      onDelete={() => handleDelete(flight.id!)}
-                      onMarkCompleted={flight.flight_type === 'planned' ? () => handleMarkAsCompleted(flight) : undefined}
-                    />
-                    
-                    {/* Detalhes expandidos dos custos */}
-                    {isExpanded && (
-                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        {isLoadingDetails ? (
-                          <div className="text-center py-4 text-text-light">
-                            Carregando detalhes dos custos...
-                          </div>
-                        ) : details ? (
-                          <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-text mb-4 flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4" />
-                                    Detalhamento de Custos
-                                  </h4>
-
-                                  {/* Breakdown por Categoria */}
-                                  <div className="space-y-4 mb-4">
-                                    {/* Custos Fixos */}
-                                    <div className="border border-gray-200 rounded-lg p-4">
-                                      <h5 className="text-xs font-semibold text-text mb-3 uppercase">Custos Fixos</h5>
-                                      <div className="space-y-2">
-                                        <div className="flex justify-between text-xs">
-                                          <span className="text-text-light">Por Hora:</span>
-                                          <span className="font-medium text-text">R$ {details.fixedCostPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                        </div>
-                                        <div className="flex justify-between text-xs">
-                                          <span className="text-text-light">Total da Perna ({details.legTime?.toFixed(2)}h):</span>
-                                          <span className="font-medium text-text">R$ {details.fixedLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                        </div>
-                                        {details.fixedBreakdown && (
-                                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
-                                            <div>
-                                              <div className="flex justify-between text-xs mb-0.5">
-                                                <span className="text-text-light">Tripulação:</span>
-                                                <span className="text-text font-medium">R$ {parseFloat(details.fixedBreakdown.crewMonthly || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mês</span>
-                                              </div>
-                                              <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                <span>→ Por hora ({details.monthlyHours || 0}h/mês):</span>
-                                                <span>R$ {parseFloat(details.fixedBreakdown.crewPerHour || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                              </div>
-                                            </div>
-                                            <div>
-                                              <div className="flex justify-between text-xs mb-0.5">
-                                                <span className="text-text-light">Hangar:</span>
-                                                <span className="text-text font-medium">R$ {parseFloat(details.fixedBreakdown.hangarMonthly || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mês</span>
-                                              </div>
-                                              <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                <span>→ Por hora ({details.monthlyHours || 0}h/mês):</span>
-                                                <span>R$ {parseFloat(details.fixedBreakdown.hangarPerHour || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                              </div>
-                                            </div>
-                                            <div>
-                                              <div className="flex justify-between text-xs mb-0.5">
-                                                <span className="text-text-light">EC Fixo:</span>
-                                                <span className="text-text font-medium">$ {parseFloat(details.fixedBreakdown.ecFixedUsd || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD / mês</span>
-                                              </div>
-                                              <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                <span>→ Em BRL (câmbio {parseFloat(details.fxRate || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}):</span>
-                                                <span>R$ {parseFloat(details.fixedBreakdown.ecFixedBrl || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mês</span>
-                                              </div>
-                                              <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                <span>→ Por hora ({details.monthlyHours || 0}h/mês):</span>
-                                                <span>R$ {parseFloat(details.fixedBreakdown.ecFixedPerHour || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                              </div>
-                                            </div>
-                                            <div>
-                                              <div className="flex justify-between text-xs mb-0.5">
-                                                <span className="text-text-light">Seguro:</span>
-                                                <span className="text-text font-medium">R$ {parseFloat(details.fixedBreakdown.insurance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mês</span>
-                                              </div>
-                                              <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                <span>→ Por hora ({details.monthlyHours || 0}h/mês):</span>
-                                                <span>R$ {parseFloat(details.fixedBreakdown.insurancePerHour || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                              </div>
-                                            </div>
-                                            <div>
-                                              <div className="flex justify-between text-xs mb-0.5">
-                                                <span className="text-text-light">Administração:</span>
-                                                <span className="text-text font-medium">R$ {parseFloat(details.fixedBreakdown.administration || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mês</span>
-                                              </div>
-                                              <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                <span>→ Por hora ({details.monthlyHours || 0}h/mês):</span>
-                                                <span>R$ {parseFloat(details.fixedBreakdown.administrationPerHour || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {/* Custos Variáveis */}
-                                    <div className="border border-gray-200 rounded-lg p-4 mt-4">
-                                      <h5 className="text-xs font-semibold text-text mb-3 uppercase">Custos Variáveis</h5>
-                                      <div className="space-y-2">
-                                        <div className="flex justify-between text-xs">
-                                          <span className="text-text-light">Por Hora:</span>
-                                          <span className="font-medium text-text">R$ {details.variableCostPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                        </div>
-                                        <div className="flex justify-between text-xs">
-                                          <span className="text-text-light">Total da Perna ({details.legTime?.toFixed(2)}h):</span>
-                                          <span className="font-medium text-text">R$ {details.variableLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                        </div>
-                                        {details.variableBreakdown && (
-                                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
-                                            <div>
-                                              <div className="flex justify-between text-xs mb-0.5">
-                                                <span className="text-text-light">Combustível:</span>
-                                                <span className="text-text font-medium">{details.variableBreakdown.fuelLitersPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'} L/h × R$ {details.variableBreakdown.fuelPricePerLiter?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                              </div>
-                                              <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                <span>→ Custo por hora:</span>
-                                                <span>R$ {parseFloat(details.variableBreakdown.fuelCostPerHour || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                              </div>
-                                            </div>
-                                            <div>
-                                              <div className="flex justify-between text-xs mb-0.5">
-                                                <span className="text-text-light">EC Variável:</span>
-                                                <span className="text-text font-medium">$ {details.variableBreakdown.ecVariableUsd?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'} USD / hora</span>
-                                              </div>
-                                              <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                <span>→ Em BRL (câmbio {details.fxRate?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}):</span>
-                                                <span>R$ {details.variableBreakdown.ecVariableBrl?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'} / hora</span>
-                                              </div>
-                                            </div>
-                                            {(details.variableBreakdown.ruPerLeg > 0 || details.variableBreakdown.ccrPerLeg > 0) && (
-                                              <div>
-                                                <div className="flex justify-between text-xs mb-0.5">
-                                                  <span className="text-text-light">RU por Perna:</span>
-                                                  <span className="text-text font-medium">R$ {details.variableBreakdown.ruPerLeg?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                                </div>
-                                                <div className="flex justify-between text-xs mb-0.5">
-                                                  <span className="text-text-light">CCR por Perna:</span>
-                                                  <span className="text-text font-medium">R$ {details.variableBreakdown.ccrPerLeg?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                                </div>
-                                                <div className="flex justify-between text-xs pl-3 text-text-light">
-                                                  <span>→ Por hora (tempo médio: {details.legTime?.toFixed(2)}h):</span>
-                                                  <span>R$ {details.variableBreakdown.ruCcrPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                                </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* DECEA e Taxa de Câmbio */}
-                                  <div className="space-y-4">
-                                    {details.deceaPerHour && details.deceaPerHour > 0 && (
-                                      <div className="border border-gray-200 rounded-lg p-4">
-                                        <h5 className="text-xs font-semibold text-text mb-3 uppercase">DECEA</h5>
-                                        <div className="space-y-2">
-                                          <div className="flex justify-between text-xs">
-                                            <span className="text-text-light">Por Hora:</span>
-                                            <span className="font-medium text-text">R$ {details.deceaPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                          </div>
-                                          <div className="flex justify-between text-xs">
-                                            <span className="text-text-light">Total da Perna ({details.legTime?.toFixed(2)}h):</span>
-                                            <span className="font-medium text-text">R$ {details.deceaLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                    <div className="border border-gray-200 rounded-lg p-4">
-                                      <h5 className="text-xs font-semibold text-text mb-3 uppercase">Taxa de Câmbio</h5>
-                                      <div className="text-xs">
-                                        <span className="text-text-light">USD/BRL: </span>
-                                        <span className="font-medium text-text">R$ {details.fxRate?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Resumo Final */}
-                                  <div className="mt-4 border-2 border-primary rounded-lg p-4 bg-gradient-to-r from-primary/10 to-primary/5">
-                                    <div className="flex justify-between items-center mb-2">
-                                      <span className="text-base font-bold text-text">Custo Total da Perna</span>
-                                      <span className="text-2xl font-bold text-primary">
-                                        R$ {details.totalLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
-                                      </span>
-                                    </div>
-                                    <div className="text-xs text-text-light space-y-1">
-                                      <div className="flex justify-between">
-                                        <span>• Fixos ({details.legTime?.toFixed(2)}h):</span>
-                                        <span>R$ {details.fixedLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span>• Variáveis ({details.legTime?.toFixed(2)}h):</span>
-                                        <span>R$ {details.variableLegCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</span>
-                                      </div>
-                                      {details.deceaLegCost && details.deceaLegCost > 0 && (
-                                        <div className="flex justify-between">
-                                          <span>• DECEA ({details.legTime?.toFixed(2)}h):</span>
-                                          <span>R$ {details.deceaLegCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
-                                      )}
-                                      <div className="pt-2 mt-2 border-t border-primary/20 text-xs text-text">
-                                        <div className="flex justify-between">
-                                          <span>Total: {details.legTime?.toFixed(2)}h × R$ {details.totalCostPerHour?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}/h</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="text-center py-4 text-text-light">
-                                  Não foi possível carregar os detalhes dos custos.
-                                </div>
-                              )}
-                      </div>
-                    )}
-                    
-                    {/* Botão para expandir/recolher detalhes */}
-                    <button
-                      onClick={() => toggleFlightExpansion(flight.id!)}
-                      className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                    >
-                      {isExpanded ? (
-                        <>
-                          <ChevronDown className="w-4 h-4" />
-                          Ocultar Detalhes dos Custos
-                        </>
-                      ) : (
-                        <>
-                          <DollarSign className="w-4 h-4" />
-                          Ver Detalhes dos Custos
-                        </>
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-semibold text-text">Data</th>
+                    <th className="text-left py-3 px-4 font-semibold text-text">Rota</th>
+                    <th className="text-left py-3 px-4 font-semibold text-text">Tempo (h)</th>
+                    <th className="text-left py-3 px-4 font-semibold text-text">Custo</th>
+                    <th className="text-left py-3 px-4 font-semibold text-text">Status</th>
+                    <th className="text-right py-3 px-4 font-semibold text-text">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredFlights.map((flight) => (
+                    <tr key={flight.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-text-light" />
+                          {formatDate(flight.flight_date)}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <Plane className="w-4 h-4 text-text-light" />
+                          <span className="font-medium">{flight.origin} → {flight.destination}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {flight.flight_type === 'completed' && flight.actual_leg_time
+                          ? `${flight.actual_leg_time.toFixed(2)}h (real)`
+                          : `${flight.leg_time.toFixed(2)}h`}
+                      </td>
+                      <td className="py-3 px-4">
+                        {flight.cost_calculated
+                          ? `R$ ${flight.cost_calculated.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : '-'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          flight.flight_type === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {flight.flight_type === 'completed' ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Realizado
+                            </>
+                          ) : (
+                            'Previsto'
+                          )}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          {flight.flight_type === 'planned' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleMarkAsCompleted(flight)}
+                              icon={<CheckCircle2 className="w-4 h-4" />}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            >
+                              Marcar como Realizado
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(flight)}
+                            className="text-gray-600 hover:text-primary hover:bg-gray-50"
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(flight.id!)}
+                            icon={<Trash2 className="w-4 h-4" />}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            Excluir
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>

@@ -66,7 +66,7 @@ export default function Home() {
   const loadRoutes = async () => {
     if (!selectedAircraftId) return;
     try {
-      const routesData = await routeApi.list();
+      const routesData = await routeApi.list(selectedAircraftId);
       setRoutes(routesData || []);
     } catch (error) {
       console.error('Erro ao carregar rotas:', error);

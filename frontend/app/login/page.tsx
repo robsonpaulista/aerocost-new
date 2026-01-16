@@ -28,18 +28,25 @@ export default function LoginPage() {
   useEffect(() => {
     // Se já estiver autenticado, redireciona para home
     if (isAuthenticated && !authLoading) {
-      window.location.href = '/';
+      router.push('/');
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
+    console.log('[LOGIN PAGE] Iniciando login...', { email, hasPassword: !!password });
+    console.log('[LOGIN PAGE] Window location:', {
+      hostname: window.location.hostname,
+      port: window.location.port,
+      href: window.location.href
+    });
+
     try {
       const success = await login(email, password);
-      
+      console.log('[LOGIN PAGE] Resultado do login:', success);
       if (success) {
         // Salva ou remove email do localStorage baseado no checkbox
         if (rememberUser) {
@@ -47,41 +54,26 @@ export default function LoginPage() {
         } else {
           localStorage.removeItem('rememberedEmail');
         }
-        
-        // Redirecionar imediatamente
-        window.location.href = '/';
+        router.push('/');
       } else {
-        setError('Email ou senha inválidos. Se você criou o usuário no Firebase Authentication, é necessário também criar na coleção "users" do Firestore. Verifique o console do navegador (F12) para mais detalhes.');
+        setError('Email ou senha inválidos');
       }
     } catch (err: any) {
-      let errorMessage = 'Erro ao fazer login. Tente novamente.';
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'Usuário não encontrado. Verifique o email.';
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        errorMessage = 'Senha incorreta. Tente novamente.';
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'Muitas tentativas. Aguarde alguns minutos.';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
+      console.error('[LOGIN PAGE] Erro capturado:', err);
+      console.error('[LOGIN PAGE] Detalhes do erro:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        config: err.config
+      });
+      setError(err.response?.data?.error || 'Erro ao fazer login. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
   };
 
   // Não renderiza nada enquanto verifica autenticação
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700">
-        <div className="text-white text-lg">Carregando...</div>
-      </div>
-    );
-  }
-
-  // Se já estiver autenticado, não renderiza o formulário
-  if (isAuthenticated) {
+  if (authLoading || isAuthenticated) {
     return null;
   }
 

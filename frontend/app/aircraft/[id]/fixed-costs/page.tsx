@@ -18,7 +18,6 @@ export default function FixedCostsPage() {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [aircraft, setAircraft] = useState<Aircraft | null>(null);
-  const [existingFixedCostId, setExistingFixedCostId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FixedCost>({
     aircraft_id: aircraftId,
     crew_monthly: 0,
@@ -32,13 +31,11 @@ export default function FixedCostsPage() {
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aircraftId]);
 
   const loadData = async () => {
     try {
       setLoadingData(true);
-      
       const [aircraftData, fixedCostData] = await Promise.all([
         aircraftApi.get(aircraftId),
         fixedCostApi.get(aircraftId).catch(() => null),
@@ -46,31 +43,18 @@ export default function FixedCostsPage() {
 
       setAircraft(aircraftData);
       if (fixedCostData) {
-        // Salvar o ID do registro existente
-        setExistingFixedCostId(fixedCostData.id || null);
-        
-        // Converter valores para números (Firestore pode retornar como string para numeric)
-        const parseNumeric = (value: any): number => {
-          if (value === null || value === undefined) return 0;
-          const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
-          return isNaN(parsed) ? 0 : parsed;
-        };
-        
         // Garantir que todos os valores são números válidos
-        const formDataToSet = {
+        setFormData({
           ...fixedCostData,
-          crew_monthly: parseNumeric(fixedCostData.crew_monthly),
-          pilot_hourly_rate: parseNumeric(fixedCostData.pilot_hourly_rate),
-          hangar_monthly: parseNumeric(fixedCostData.hangar_monthly),
-          ec_fixed_usd: parseNumeric(fixedCostData.ec_fixed_usd),
-          insurance: parseNumeric(fixedCostData.insurance),
-          administration: parseNumeric(fixedCostData.administration),
-        };
-        
-        setFormData(formDataToSet);
+          crew_monthly: fixedCostData.crew_monthly || 0,
+          pilot_hourly_rate: fixedCostData.pilot_hourly_rate || 0,
+          hangar_monthly: fixedCostData.hangar_monthly || 0,
+          ec_fixed_usd: fixedCostData.ec_fixed_usd || 0,
+          insurance: fixedCostData.insurance || 0,
+          administration: fixedCostData.administration || 0,
+        });
       } else {
         // Resetar para valores padrão se não houver dados
-        setExistingFixedCostId(null);
         setFormData({
           aircraft_id: aircraftId,
           crew_monthly: 0,
@@ -82,6 +66,7 @@ export default function FixedCostsPage() {
         });
       }
     } catch (error: any) {
+      console.error('Erro ao carregar dados:', error);
       if (error.response?.status === 404) {
         // Aeronave não encontrada
         router.push('/');
@@ -98,7 +83,8 @@ export default function FixedCostsPage() {
 
     try {
       // Garantir que aircraft_id está correto e valores são números válidos
-      const dataToSend = {
+      const dataToSend: FixedCost = {
+        ...formData,
         aircraft_id: aircraftId,
         crew_monthly: formData.crew_monthly || 0,
         pilot_hourly_rate: formData.pilot_hourly_rate || 0,
@@ -108,45 +94,10 @@ export default function FixedCostsPage() {
         administration: formData.administration || 0,
       };
       
-      // Se já existe registro, usar update; senão, usar upsert (create)
-      let savedData;
-      if (existingFixedCostId) {
-        savedData = await fixedCostApi.update(existingFixedCostId, dataToSend);
-      } else {
-        savedData = await fixedCostApi.upsert(dataToSend);
-        // Se era novo registro, atualizar o ID
-        if (savedData?.id) {
-          setExistingFixedCostId(savedData.id);
-        }
-      }
-      
-      // Atualizar o formData com os dados salvos (garantir sincronização)
-      if (savedData) {
-        // Converter valores para números (Firestore pode retornar como string)
-        const parseNumeric = (value: any): number => {
-          if (value === null || value === undefined) return 0;
-          const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
-          return isNaN(parsed) ? 0 : parsed;
-        };
-        
-        const updatedFormData = {
-          ...savedData,
-          crew_monthly: parseNumeric(savedData.crew_monthly),
-          pilot_hourly_rate: parseNumeric(savedData.pilot_hourly_rate),
-          hangar_monthly: parseNumeric(savedData.hangar_monthly),
-          ec_fixed_usd: parseNumeric(savedData.ec_fixed_usd),
-          insurance: parseNumeric(savedData.insurance),
-          administration: parseNumeric(savedData.administration),
-        };
-        
-        setFormData(updatedFormData);
-      }
-      
-      alert('Custos fixos salvos com sucesso!');
-      // NÃO recarregar dados do servidor aqui - usar apenas os dados retornados do save
-      // await loadData(); // REMOVIDO - estava causando sobrescrita com valores antigos
+      await fixedCostApi.upsert(dataToSend);
       router.push(`/aircraft/${aircraftId}`);
     } catch (error: any) {
+      console.error('Erro ao salvar custos fixos:', error);
       if (error.response?.data?.details) {
         const validationErrors: Record<string, string> = {};
         error.response.data.details.forEach((err: any) => {
@@ -272,11 +223,10 @@ export default function FixedCostsPage() {
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                value={typeof formData.insurance === 'number' ? formData.insurance : (parseFloat(String(formData.insurance || '0')) || 0)}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setFormData({ ...formData, insurance: value });
-                }}
+                value={formData.insurance || ''}
+                onChange={(e) =>
+                  setFormData({ ...formData, insurance: parseFloat(e.target.value) || 0 })
+                }
                 error={errors.insurance}
               />
 
