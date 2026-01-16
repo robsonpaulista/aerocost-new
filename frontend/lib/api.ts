@@ -92,7 +92,6 @@ export interface VariableCost {
 
 export interface Route {
   id?: string;
-  aircraft_id: string;
   origin: string;
   destination: string;
   decea_per_hour: number;
