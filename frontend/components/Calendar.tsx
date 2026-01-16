@@ -84,9 +84,18 @@ export default function Calendar({ aircraftId, onFlightDoubleClick }: CalendarPr
   };
 
   const getFlightsForDate = (date: Date): Flight[] => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Formatar data como YYYY-MM-DD (timezone local)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
     return flights.filter(flight => {
-      const flightDate = flight.flight_date.split('T')[0];
+      // Extrair apenas a parte da data (YYYY-MM-DD) da string ISO
+      let flightDate = flight.flight_date;
+      if (flightDate.includes('T')) {
+        flightDate = flightDate.split('T')[0];
+      }
       return flightDate === dateStr;
     });
   };
