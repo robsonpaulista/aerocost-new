@@ -1,11 +1,11 @@
 // API Route do Next.js para Partners (Sócios)
 import { NextRequest, NextResponse } from 'next/server';
 import { Partner } from '@/lib/models/Partner';
-import { requireAdmin } from '@/lib/auth/validateRole';
+import { requireAuth } from '@/lib/auth/validateAuth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Listar sócios não requer admin, mas vamos manter por segurança
+    // Listar sócios não requer autenticação
     const partners = await Partner.findAll();
     return NextResponse.json(partners);
   } catch (error: any) {
@@ -19,11 +19,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Validar se é admin
-    const { user: adminUser, error } = await requireAdmin(request);
-    if (error || !adminUser) {
+    // Validar se está autenticado (não precisa ser admin)
+    const { user, error } = await requireAuth(request);
+    if (error || !user) {
       return NextResponse.json(
-        { error: error || 'Acesso negado' },
+        { error: error || 'Acesso negado. Faça login para continuar.' },
         { status: 403 }
       );
     }

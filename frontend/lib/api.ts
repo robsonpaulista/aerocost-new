@@ -38,7 +38,13 @@ api.interceptors.request.use(
         if (savedAuth === 'true' && savedUser) {
           const userData = JSON.parse(savedUser);
           if (userData?.email) {
-            config.headers['x-user-email'] = userData.email;
+            // Garantir que headers existe e é um objeto
+            if (!config.headers) {
+              config.headers = {} as any;
+            }
+            if (typeof config.headers === 'object' && !Array.isArray(config.headers)) {
+              config.headers['x-user-email'] = userData.email;
+            }
           }
         }
       } catch (error) {

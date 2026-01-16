@@ -10,10 +10,13 @@ export async function requireAuth(request: NextRequest): Promise<{ user: any; er
   try {
     const userEmail = request.headers.get('x-user-email');
     
+    console.log('[requireAuth] Header x-user-email:', userEmail);
+    console.log('[requireAuth] Todos os headers:', Object.fromEntries(request.headers.entries()));
+    
     if (!userEmail) {
       return { 
         user: null, 
-        error: 'Email do usuário não fornecido' 
+        error: 'Email do usuário não fornecido. Faça login para continuar.' 
       };
     }
 
@@ -30,6 +33,7 @@ export async function requireAuth(request: NextRequest): Promise<{ user: any; er
 
     return { user };
   } catch (error: any) {
+    console.error('[requireAuth] Erro:', error);
     return { user: null, error: error.message || 'Erro ao validar autenticação' };
   }
 }
