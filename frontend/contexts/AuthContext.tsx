@@ -1,9 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { getAuthInstance } from '@/lib/config/firebase';
 import { userApi, type User } from '@/lib/api';
+import { getAuthInstance } from '@/lib/config/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -21,135 +21,108 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Obter instância do auth (apenas no cliente)
-    const auth = getAuthInstance();
+    // Verifica se há uma sessão salva no localStorage
+    const savedAuth = localStorage.getItem('aeroCost_auth');
+    const savedUser = localStorage.getItem('aeroCost_user');
     
-    // Monitorar estado de autenticação do Firebase
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser && firebaseUser.email) {
-        try {
-          // Buscar dados do usuário no Firestore por email usando rota pública
-          const userData = await userApi.getByEmail(firebaseUser.email);
+    if (savedAuth === 'true' && savedUser) {
+      try {
+        const userData = JSON.parse(savedUser);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Erro ao recuperar dados do usuário:', error);
+        localStorage.removeItem('aeroCost_auth');
+        localStorage.removeItem('aeroCost_user');
+      }
+    }
 
-          if (userData && userData.is_active) {
-            setUser(userData);
-            setIsAuthenticated(true);
-            localStorage.setItem('aeroCost_auth', 'true');
-            localStorage.setItem('aeroCost_user', JSON.stringify(userData));
-          } else if (userData && !userData.is_active) {
-            // Usuário inativo
-            await signOut(auth);
-            setUser(null);
-            setIsAuthenticated(false);
-            localStorage.removeItem('aeroCost_auth');
-            localStorage.removeItem('aeroCost_user');
-          } else {
-            // Usuário não encontrado - manter autenticado temporariamente
-            // Criar um usuário temporário com dados do Firebase Auth
-            const tempUser = {
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
-              email: firebaseUser.email!,
-              role: 'user' as const,
-              is_active: true,
-            };
-            setUser(tempUser);
-            setIsAuthenticated(true);
-            localStorage.setItem('aeroCost_auth', 'true');
-            localStorage.setItem('aeroCost_user', JSON.stringify(tempUser));
-          }
-        } catch (error) {
-          // Em caso de erro, não deslogar imediatamente
-          // Pode ser um problema temporário de rede
-          const savedUser = localStorage.getItem('aeroCost_user');
-          if (savedUser) {
+    // Monitora mudanças no Firebase Auth
+    try {
+      const auth = getAuthInstance();
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+        if (firebaseUser) {
+          // Verifica se o email existe antes de buscar o usuário
+          if (firebaseUser.email) {
             try {
-              const userData = JSON.parse(savedUser);
-              setUser(userData);
-              setIsAuthenticated(true);
-            } catch {
-              await signOut(auth);
-              setUser(null);
+              const userData: User | null = await userApi.getByEmail(firebaseUser.email);
+              if (userData) {
+                setUser(userData);
+                setIsAuthenticated(true);
+                localStorage.setItem('aeroCost_auth', 'true');
+                localStorage.setItem('aeroCost_user', JSON.stringify(userData));
+              } else {
+                // Usuário não encontrado no Firestore, fazer logout
+                await auth.signOut();
+                setIsAuthenticated(false);
+                setUser(null);
+                localStorage.removeItem('aeroCost_auth');
+                localStorage.removeItem('aeroCost_user');
+              }
+            } catch (error) {
+              console.error('Erro ao buscar usuário:', error);
+              await auth.signOut();
               setIsAuthenticated(false);
+              setUser(null);
               localStorage.removeItem('aeroCost_auth');
               localStorage.removeItem('aeroCost_user');
             }
           } else {
-            await signOut(auth);
-            setUser(null);
+            // Email não disponível, fazer logout
+            await auth.signOut();
             setIsAuthenticated(false);
+            setUser(null);
             localStorage.removeItem('aeroCost_auth');
             localStorage.removeItem('aeroCost_user');
           }
+        } else {
+          // Usuário não autenticado no Firebase
+          setIsAuthenticated(false);
+          setUser(null);
+          localStorage.removeItem('aeroCost_auth');
+          localStorage.removeItem('aeroCost_user');
         }
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
-        localStorage.removeItem('aeroCost_auth');
-        localStorage.removeItem('aeroCost_user');
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (error) {
+      // Se não conseguir inicializar Firebase Auth (servidor-side), apenas usa localStorage
+      console.warn('Firebase Auth não disponível (servidor-side):', error);
+      setLoading(false);
+    }
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Obter instância do auth (apenas no cliente)
-      const auth = getAuthInstance();
+      console.log('[AUTH] Tentando fazer login:', email);
+      const response = await userApi.login(email, password);
+      console.log('[AUTH] Resposta do login:', response);
       
-      // Autenticar com Firebase Authentication
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-
-      // Buscar dados do usuário no Firestore por email usando rota pública
-      let userData: User | null = null;
-      try {
-        userData = await userApi.getByEmail(firebaseUser.email);
-      } catch (error: any) {
-        await signOut(auth);
-        return false;
+      if (response.user) {
+        setUser(response.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('aeroCost_auth', 'true');
+        localStorage.setItem('aeroCost_user', JSON.stringify(response.user));
+        console.log('[AUTH] Login bem-sucedido');
+        return true;
       }
-
-      if (!userData) {
-        await signOut(auth);
-        return false;
-      }
-
-      if (!userData.is_active) {
-        await signOut(auth);
-        return false;
-      }
-
-      // Atualizar último login
-      try {
-        await userApi.update(userData.id, {});
-      } catch {
-        // Ignorar erro ao atualizar último login
-      }
-
-      setUser(userData);
-      setIsAuthenticated(true);
-      localStorage.setItem('aeroCost_auth', 'true');
-      localStorage.setItem('aeroCost_user', JSON.stringify(userData));
-      
-      return true;
+      console.log('[AUTH] Login falhou: usuário não retornado');
+      return false;
     } catch (error: any) {
-      // Erros do Firebase Authentication
-      if (error.code === 'auth/user-not-found' || 
-          error.code === 'auth/wrong-password' || 
-          error.code === 'auth/invalid-credential') {
-        return false;
-      }
-      
+      console.error('[AUTH] Erro ao fazer login:', error);
+      console.error('[AUTH] Detalhes do erro:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL
+      });
       return false;
     }
   };
 
-  const logout = async () => {
-    const auth = getAuthInstance();
-    await signOut(auth);
+  const logout = () => {
     setIsAuthenticated(false);
     setUser(null);
     localStorage.removeItem('aeroCost_auth');
