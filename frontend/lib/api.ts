@@ -17,6 +17,7 @@ const api = axios.create({
 });
 
 // Interceptor para adicionar timestamp a todas as requisições GET para evitar cache
+// e adicionar header de autenticação quando o usuário estiver logado
 api.interceptors.request.use(
   (config) => {
     // Adicionar timestamp para evitar cache em requisições GET
@@ -25,6 +26,25 @@ api.interceptors.request.use(
         ...config.params,
         _t: Date.now(), // Timestamp para evitar cache
       };
+    }
+    
+    // Adicionar header de autenticação se o usuário estiver logado
+    // Verifica no localStorage se há um usuário autenticado
+    if (typeof window !== 'undefined') {
+      try {
+        const savedAuth = localStorage.getItem('aeroCost_auth');
+        const savedUser = localStorage.getItem('aeroCost_user');
+        
+        if (savedAuth === 'true' && savedUser) {
+          const userData = JSON.parse(savedUser);
+          if (userData?.email) {
+            config.headers['x-user-email'] = userData.email;
+          }
+        }
+      } catch (error) {
+        // Ignorar erros ao ler localStorage
+        console.warn('[API] Erro ao ler dados do usuário do localStorage:', error);
+      }
     }
     
     return config;
