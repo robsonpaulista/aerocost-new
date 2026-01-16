@@ -16,7 +16,7 @@ export class DashboardService {
       const [aircraft, fxRate, routes, allFlights, flightStats] = await Promise.all([
         Aircraft.findById(aircraftId),
         FxRate.getCurrent().catch(() => null),
-        Route.findByAircraftId(aircraftId),
+        Route.findAll().catch(() => []),
         Flight.findByAircraftId(aircraftId, { limit: 100 }),
         Flight.getStatistics(aircraftId, startOfMonth, endOfMonth).catch(() => null),
       ]);
