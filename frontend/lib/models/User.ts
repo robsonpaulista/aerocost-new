@@ -116,53 +116,81 @@ export class User {
    * Verifica credenciais de login
    */
   static async verifyCredentials(email: string, password: string) {
-    const user = await this.findByEmail(email);
-    
-    if (!user) {
-      return null;
-    }
-
-    if (!user.is_active) {
-      throw new Error('Usuário inativo');
-    }
-
-    // Verificar se o hash está no formato bcrypt válido ($2a$, $2b$, $2y$)
-    const hashStartsWithBcrypt = user.password_hash && (
-      user.password_hash.startsWith('$2a$') || 
-      user.password_hash.startsWith('$2b$') || 
-      user.password_hash.startsWith('$2y$')
-    );
-
-    let isValid = false;
-    
-    // Se o hash não está no formato bcrypt, pode ser um hash do PostgreSQL crypt()
-    // Nesse caso, precisamos resetar a senha
-    if (!hashStartsWithBcrypt) {
-      // Hash inválido ou em formato incompatível
-      // Retornar null para indicar credenciais inválidas
-      // O usuário precisará resetar a senha
-      return null;
-    }
-    
     try {
-      isValid = await bcrypt.compare(password, user.password_hash);
-    } catch (bcryptError) {
-      isValid = false;
-    }
-    
-    if (!isValid) {
-      return null;
-    }
+      console.log('[User.verifyCredentials] Iniciando verificação para:', email);
+      const user = await this.findByEmail(email);
+      
+      if (!user) {
+        console.log('[User.verifyCredentials] Usuário não encontrado:', email);
+        return null;
+      }
 
-    await this.updateLastLogin(user.id);
+      console.log('[User.verifyCredentials] Usuário encontrado:', {
+        id: user.id,
+        email: user.email,
+        is_active: user.is_active,
+        hasPasswordHash: !!user.password_hash,
+        passwordHashLength: user.password_hash?.length || 0,
+        passwordHashStart: user.password_hash?.substring(0, 10) || 'N/A'
+      });
 
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      is_active: user.is_active,
-    };
+      if (!user.is_active) {
+        console.log('[User.verifyCredentials] Usuário inativo:', email);
+        throw new Error('Usuário inativo');
+      }
+
+      // Verificar se há password_hash
+      if (!user.password_hash) {
+        console.log('[User.verifyCredentials] Usuário sem password_hash:', email);
+        return null;
+      }
+
+      // Verificar se o hash está no formato bcrypt válido ($2a$, $2b$, $2y$)
+      const hashStartsWithBcrypt = user.password_hash && (
+        user.password_hash.startsWith('$2a$') || 
+        user.password_hash.startsWith('$2b$') || 
+        user.password_hash.startsWith('$2y$')
+      );
+
+      if (!hashStartsWithBcrypt) {
+        console.log('[User.verifyCredentials] Hash não está no formato bcrypt válido:', {
+          email,
+          hashStart: user.password_hash.substring(0, 10)
+        });
+        // Hash inválido ou em formato incompatível
+        // Retornar null para indicar credenciais inválidas
+        return null;
+      }
+      
+      let isValid = false;
+      
+      try {
+        isValid = await bcrypt.compare(password, user.password_hash);
+        console.log('[User.verifyCredentials] Resultado da comparação bcrypt:', isValid);
+      } catch (bcryptError: any) {
+        console.error('[User.verifyCredentials] Erro ao comparar senha:', bcryptError.message);
+        isValid = false;
+      }
+      
+      if (!isValid) {
+        console.log('[User.verifyCredentials] Senha inválida para:', email);
+        return null;
+      }
+
+      console.log('[User.verifyCredentials] Login bem-sucedido para:', email);
+      await this.updateLastLogin(user.id);
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        is_active: user.is_active,
+      };
+    } catch (error: any) {
+      console.error('[User.verifyCredentials] Erro geral:', error.message);
+      throw error;
+    }
   }
 
   /**
