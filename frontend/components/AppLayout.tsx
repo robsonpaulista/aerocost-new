@@ -20,7 +20,8 @@ import {
   ChevronRight,
   FileText,
   BarChart3,
-  LogOut
+  LogOut,
+  Users
 } from 'lucide-react';
 import { useAircraft } from '@/contexts/AircraftContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -171,6 +172,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     <ChevronRight className="w-4 h-4 text-gray-400" />
                   </button>
                 )}
+                {/* Gerenciar Sócios */}
+                <button
+                  onClick={() => {
+                    router.push('/partners');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors ${
+                    isActive('/partners') ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2 pr-3' : 'text-gray-700 px-3'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5" />
+                    <span>Gerenciar Sócios</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
               </div>
 
               {/* Aeronave */}

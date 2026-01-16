@@ -7,8 +7,8 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import AppLayout from '@/components/AppLayout';
-import { flightApi, routeApi, aircraftApi } from '@/lib/api';
-import type { Flight, Route, Aircraft } from '@/lib/api';
+import { flightApi, routeApi, aircraftApi, partnerApi } from '@/lib/api';
+import type { Flight, Route, Aircraft, Partner } from '@/lib/api';
 
 export default function FlightsPage() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function FlightsPage() {
   const [aircraft, setAircraft] = useState<Aircraft | null>(null);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [flights, setFlights] = useState<Flight[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingFlight, setEditingFlight] = useState<Flight | null>(null);
   const [formData, setFormData] = useState<Omit<Flight, 'id'>>({
@@ -33,8 +34,10 @@ export default function FlightsPage() {
     actual_leg_time: null,
     cost_calculated: null,
     passenger_name: null,
+    passenger_ids: null,
     notes: null,
   });
+  const [selectedPartnerIds, setSelectedPartnerIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [filterType, setFilterType] = useState<'all' | 'planned' | 'completed'>('all');
 
@@ -56,7 +59,7 @@ export default function FlightsPage() {
   const loadData = async () => {
     try {
       setLoadingData(true);
-      const [aircraftData, routesData, flightsData] = await Promise.all([
+      const [aircraftData, routesData, flightsData, partnersData] = await Promise.all([
         aircraftApi.get(aircraftId),
         routeApi.list().catch((err) => {
           console.error('Erro ao carregar rotas:', err);
@@ -64,6 +67,10 @@ export default function FlightsPage() {
         }),
         flightApi.list(aircraftId).catch((err) => {
           console.error('Erro ao carregar voos:', err);
+          return [];
+        }),
+        partnerApi.list().catch((err) => {
+          console.error('Erro ao carregar sócios:', err);
           return [];
         }),
       ]);
@@ -75,6 +82,7 @@ export default function FlightsPage() {
       console.log('Rotas processadas:', routesArray);
       setRoutes(routesArray);
       setFlights(Array.isArray(flightsData) ? flightsData : []);
+      setPartners(Array.isArray(partnersData) ? partnersData.filter((p: Partner) => p.is_active) : []);
     } catch (error: any) {
       console.error('Erro ao carregar dados:', error);
       if (error.response?.status === 404) {
@@ -108,10 +116,15 @@ export default function FlightsPage() {
     setErrors({});
 
     try {
+      const flightDataToSave = {
+        ...formData,
+        passenger_ids: selectedPartnerIds.length > 0 ? selectedPartnerIds : null,
+      };
+
       if (editingFlight?.id) {
-        await flightApi.update(editingFlight.id, formData);
+        await flightApi.update(editingFlight.id, flightDataToSave);
       } else {
-        await flightApi.create(formData);
+        await flightApi.create(flightDataToSave);
       }
 
       await loadData();
@@ -176,8 +189,10 @@ export default function FlightsPage() {
       actual_leg_time: flight.actual_leg_time || null,
       cost_calculated: flight.cost_calculated || null,
       passenger_name: flight.passenger_name || null,
+      passenger_ids: flight.passenger_ids || null,
       notes: flight.notes || null,
     });
+    setSelectedPartnerIds(flight.passenger_ids || []);
     setShowForm(true);
   };
 
@@ -193,8 +208,10 @@ export default function FlightsPage() {
       actual_leg_time: null,
       cost_calculated: null,
       passenger_name: null,
+      passenger_ids: null,
       notes: null,
     });
+    setSelectedPartnerIds([]);
     setEditingFlight(null);
     setShowForm(false);
     setErrors({});
@@ -343,13 +360,48 @@ export default function FlightsPage() {
                   />
                 )}
 
-                <Input
-                  label="Passageiro Titular"
-                  placeholder="Nome do passageiro titular (sócio)"
-                  value={formData.passenger_name || ''}
-                  onChange={(e) => setFormData({ ...formData, passenger_name: e.target.value || null })}
-                  error={errors.passenger_name}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1">
+                    Sócios no Voo (Múltipla Seleção)
+                  </label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+                    {partners.length === 0 ? (
+                      <p className="text-xs text-text-light text-center py-2">
+                        Nenhum sócio cadastrado. <a href="/partners" className="text-blue-600 hover:underline">Cadastrar sócios</a>
+                      </p>
+                    ) : (
+                      partners.map((partner) => (
+                        <label
+                          key={partner.id}
+                          className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedPartnerIds.includes(partner.id!)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPartnerIds([...selectedPartnerIds, partner.id!]);
+                              } else {
+                                setSelectedPartnerIds(selectedPartnerIds.filter(id => id !== partner.id));
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded"
+                          />
+                          <div
+                            className="w-4 h-4 rounded"
+                            style={{ backgroundColor: partner.color }}
+                          />
+                          <span className="text-sm text-text">{partner.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                  {selectedPartnerIds.length > 0 && (
+                    <p className="text-xs text-text-light mt-1">
+                      {selectedPartnerIds.length} sócio(s) selecionado(s)
+                    </p>
+                  )}
+                </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-text mb-1">
@@ -413,11 +465,64 @@ export default function FlightsPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-text-light" />
-                          <span className={flight.passenger_name ? 'text-text' : 'text-text-light italic'}>
-                            {flight.passenger_name || 'Não informado'}
-                          </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {(() => {
+                            // Se tiver passenger_ids, mostrar os sócios
+                            if (flight.passenger_ids && flight.passenger_ids.length > 0) {
+                              const flightPartners = partners.filter(p => flight.passenger_ids!.includes(p.id!));
+                              if (flightPartners.length > 0) {
+                                return flightPartners.map((partner) => (
+                                  <div
+                                    key={partner.id}
+                                    className="flex items-center gap-1 px-2 py-1 rounded text-xs"
+                                    style={{
+                                      backgroundColor: partner.color + '20',
+                                      borderLeft: `2px solid ${partner.color}`,
+                                    }}
+                                  >
+                                    <div
+                                      className="w-2 h-2 rounded-full"
+                                      style={{ backgroundColor: partner.color }}
+                                    />
+                                    <span>{partner.name}</span>
+                                  </div>
+                                ));
+                              }
+                            }
+                            // Fallback para passenger_name (compatibilidade)
+                            if (flight.passenger_name) {
+                              const partner = partners.find(p => p.name.toLowerCase() === flight.passenger_name?.toLowerCase());
+                              if (partner) {
+                                return (
+                                  <div
+                                    className="flex items-center gap-1 px-2 py-1 rounded text-xs"
+                                    style={{
+                                      backgroundColor: partner.color + '20',
+                                      borderLeft: `2px solid ${partner.color}`,
+                                    }}
+                                  >
+                                    <div
+                                      className="w-2 h-2 rounded-full"
+                                      style={{ backgroundColor: partner.color }}
+                                    />
+                                    <span>{partner.name}</span>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <>
+                                  <User className="w-4 h-4 text-text-light" />
+                                  <span className="text-text">{flight.passenger_name}</span>
+                                </>
+                              );
+                            }
+                            return (
+                              <>
+                                <User className="w-4 h-4 text-text-light" />
+                                <span className="text-text-light italic">Não informado</span>
+                              </>
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="py-3 px-4">

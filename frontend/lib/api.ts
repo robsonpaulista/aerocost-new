@@ -128,7 +128,8 @@ export interface Flight {
   leg_time: number;
   actual_leg_time?: number | null;
   cost_calculated?: number | null;
-  passenger_name?: string | null;
+  passenger_name?: string | null; // Mantido para compatibilidade
+  passenger_ids?: string[] | null; // IDs dos sócios (array para múltiplos sócios)
   notes?: string | null;
   routes?: {
     origin: string;
@@ -141,6 +142,17 @@ export interface FxRate {
   id?: string;
   usd_to_brl: number;
   effective_date?: string;
+}
+
+export interface Partner {
+  id?: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  color: string; // Cor para identificação no calendário (hex)
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // API Functions
@@ -256,6 +268,16 @@ export const userApi = {
   }),
   login: (email: string, password: string) =>
     api.post<{ user: User; message: string }>('/users/login', { email, password }).then(res => res.data),
+};
+
+export const partnerApi = {
+  list: () => api.get<Partner[]>('/partners').then(res => res.data),
+  get: (id: string) => api.get<Partner>(`/partners/${id}`).then(res => res.data),
+  create: (data: Omit<Partner, 'id' | 'created_at' | 'updated_at'>) =>
+    api.post<Partner>('/partners', data).then(res => res.data),
+  update: (id: string, data: Partial<Omit<Partner, 'id' | 'created_at' | 'updated_at'>>) =>
+    api.put<Partner>(`/partners/${id}`, data).then(res => res.data),
+  delete: (id: string) => api.delete(`/partners/${id}`).then(res => res.data),
 };
 
 export default api;

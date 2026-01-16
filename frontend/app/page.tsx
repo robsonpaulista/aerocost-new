@@ -20,9 +20,11 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import AppLayout from '@/components/AppLayout';
+import Calendar from '@/components/Calendar';
+import FlightDetailsModal from '@/components/FlightDetailsModal';
 import { useAircraft } from '@/contexts/AircraftContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { dashboardApi, flightApi, calculationApi, routeApi } from '@/lib/api';
+import { dashboardApi, flightApi, calculationApi, routeApi, partnerApi, type Flight, type Partner } from '@/lib/api';
 
 export default function Home() {
   const router = useRouter();
@@ -48,6 +50,8 @@ export default function Home() {
   });
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   const [editLoading, setEditLoading] = useState<boolean>(false);
+  const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+  const [partners, setPartners] = useState<Partner[]>([]);
 
   // Verifica autenticação e redireciona para login se necessário
   useEffect(() => {
@@ -60,8 +64,18 @@ export default function Home() {
     if (selectedAircraftId && isAuthenticated) {
       loadDashboard();
       loadRoutes();
+      loadPartners();
     }
   }, [selectedAircraftId, isAuthenticated]);
+
+  const loadPartners = async () => {
+    try {
+      const partnersData = await partnerApi.list();
+      setPartners(partnersData || []);
+    } catch (error) {
+      console.error('Erro ao carregar sócios:', error);
+    }
+  };
 
   const loadRoutes = async () => {
     if (!selectedAircraftId) return;
@@ -245,6 +259,58 @@ export default function Home() {
     setExpandedFlights(newExpanded);
   };
 
+  const handleFlightDoubleClick = (flight: Flight) => {
+    setSelectedFlight(flight);
+  };
+
+  const handleRecalculateFlight = async (flight: Flight) => {
+    try {
+      const legTime = flight.actual_leg_time || flight.leg_time;
+      if (legTime) {
+        const details = await calculationApi.legCost(
+          flight.aircraft_id,
+          legTime,
+          flight.route_id || undefined
+        );
+        
+        // Atualizar o voo com o custo recalculado
+        await flightApi.update(flight.id!, {
+          cost_calculated: details.totalLegCost,
+        });
+        
+        await loadDashboard();
+      }
+    } catch (error) {
+      console.error('Erro ao recalcular voo:', error);
+      throw error;
+    }
+  };
+
+  const handleEditFlight = (flight: Flight) => {
+    setEditingFlight(flight);
+    setFormData({
+      origin: flight.origin,
+      destination: flight.destination,
+      flight_date: flight.flight_date.split('T')[0],
+      leg_time: flight.leg_time,
+      actual_leg_time: flight.actual_leg_time || null,
+      route_id: flight.route_id || null,
+      notes: flight.notes || null,
+    });
+    setShowEditModal(true);
+    setSelectedFlight(null);
+  };
+
+  const handleDeleteFlight = async (flightId: string) => {
+    try {
+      await flightApi.delete(flightId);
+      await loadDashboard();
+    } catch (error) {
+      console.error('Erro ao excluir voo:', error);
+      alert('Erro ao excluir voo');
+    }
+  };
+
 
   // Não renderiza nada enquanto verifica autenticação ou se não estiver autenticado
   if (authLoading || !isAuthenticated) {
@@ -275,8 +341,29 @@ export default function Home() {
           </Card>
         )}
 
-        {!loading && dashboardData && selectedAircraftId && (
+        {!loading && selectedAircraftId && (
           <>
+            {/* Calendário de Voos */}
+            <Calendar
+              aircraftId={selectedAircraftId}
+              onFlightDoubleClick={handleFlightDoubleClick}
+            />
+
+            {/* Modal de Detalhes do Voo */}
+            {selectedFlight && (
+              <FlightDetailsModal
+                flight={selectedFlight}
+                partners={partners}
+                onClose={() => setSelectedFlight(null)}
+                onRecalculate={handleRecalculateFlight}
+                onEdit={handleEditFlight}
+                onDelete={handleDeleteFlight}
+              />
+            )}
+
+            {/* Seção: Breakdown de Custos (mantida para referência) */}
+            {dashboardData && dashboardData.calculations && dashboardData.calculations.breakdown && (
+            <>
             {/* Seção: Breakdown de Custos */}
             {dashboardData.calculations && dashboardData.calculations.breakdown && (
               <Card className="mt-6 shadow-sm">
@@ -1046,6 +1133,8 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+            )}
+            </>
             )}
     </AppLayout>
   );
