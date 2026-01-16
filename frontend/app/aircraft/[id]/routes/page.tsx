@@ -22,7 +22,6 @@ export default function RoutesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingRoute, setEditingRoute] = useState<Route | null>(null);
   const [formData, setFormData] = useState<Omit<Route, 'id'>>({
-    aircraft_id: aircraftId,
     origin: '',
     destination: '',
     decea_per_hour: 0,
@@ -68,7 +67,6 @@ export default function RoutesPage() {
       setShowForm(false);
       setEditingRoute(null);
       setFormData({
-        aircraft_id: aircraftId,
         origin: '',
         destination: '',
         decea_per_hour: 0,
@@ -91,7 +89,6 @@ export default function RoutesPage() {
   const handleEdit = (route: Route) => {
     setEditingRoute(route);
     setFormData({
-      aircraft_id: aircraftId,
       origin: route.origin,
       destination: route.destination,
       decea_per_hour: route.decea_per_hour,
@@ -128,7 +125,6 @@ export default function RoutesPage() {
               setShowForm(true);
               setEditingRoute(null);
               setFormData({
-                aircraft_id: aircraftId,
                 origin: '',
                 destination: '',
                 decea_per_hour: 0,
